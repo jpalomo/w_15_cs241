@@ -1,4 +1,4 @@
-package pl241_compiler;
+package com.palomo.pl241.test;
 
 import org.junit.Test;
 
