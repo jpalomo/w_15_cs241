@@ -1,2 +1,2 @@
 # w_15_cs241
-DLX Compiler for Michael Franz's Advanced Compiler Construction Course
+PL241 Compiler for Michael Franz's Advanced Compiler Construction Course (CS241) at UC Irvine.  The compiler will leverage the DLX machine architecture.
