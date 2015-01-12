@@ -1,7 +1,7 @@
 // The DLX Virtual Machine
 // chs / mf 2001-08-07
 
-package com.michaelfranz.test;
+package com.franz.test;
 
 
 import java.io.*;
