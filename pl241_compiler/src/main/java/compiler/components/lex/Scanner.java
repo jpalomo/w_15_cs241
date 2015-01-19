@@ -108,10 +108,11 @@ public class Scanner
 		lexeme.append(inputSym);
 		next();	//consume the character
 
-		while(isOtherChar()) {  //implement maximal munch
+		if(inputSym == '=' || inputSym == '-' ) {  //either relop or becomes
 			lexeme.append(inputSym);
 			next();
 		} 
+		
 		token = Token.RELOP_OR_KEYWORD(lexeme.toString()); 
         LOGGER.info("RelOp or Keyword Lexeme: " + token.getLexeme()); 
 	}
@@ -135,4 +136,10 @@ public class Scanner
 		charPos++;
 		LOGGER.trace("Retrieved: " + inputSym); 
 	} 
+
+	private void pushBack(char c) {
+		inputSym = c;
+		charPos--;
+		LOGGER.trace("Pushbacked char: " + inputSym); 	
+	}
 }

@@ -55,7 +55,7 @@ public class Token
 			.put("(", Kind.OPN_PAREN)
 			.put(")", Kind.CLS_PAREN)
 			.put("<-", Kind.BECOMES)
-			.put(":", Kind.SEMI_COL)
+			.put(";", Kind.SEMI_COL)
 			.put("{", Kind.BEGIN)
 			.put("}", Kind.END)
 			.build(); 
@@ -63,14 +63,13 @@ public class Token
     public static final Token EOF_TOKEN = new Token(Kind.EOF);
     public static final Token ERR_TOKEN = new Token(Kind.ERROR);
 
-	private Kind kind;
-	private String lexeme;
+	public Kind kind;  //the name of the token representing the lexeme
+	private String lexeme;  //the sequence of characters identified by the lexical scanner
 
-	/**
+	/*
 	 * This is the driving private constructor for all the static factory 
 	 * token methods.  It will initialized to an error token with the string:
-	 * "No lexeme given".
-	 * 
+	 * "No lexeme given". 
 	 */
 	private Token() {
 		// if we don't match anything, signal error
@@ -82,19 +81,22 @@ public class Token
 		this.kind = kind;
 	}
 
-	// Return the value representing or held by this token
-	public int getValue() {
-		return this.kind.value;
+	/**
+	 * Returns the value representing or held by this token
+	 * @return  the token lexeme value represented as an int
+	 */
+	public int getIntValue() {
+		return this.kind.getIntValue();
 	}
 
+	/**
+	 * 
+	 * @return the string of characters the represent the lexeme of the token
+	 */
 	public String getLexeme() {
 		return lexeme;
 	}
 	
-	public Kind getKind() {
-		return kind;
-	}
-
 	public void setKind(Kind kind) {
 		this.kind = kind;
 	}
@@ -119,7 +121,7 @@ public class Token
 
 	public static Token RELOP_OR_KEYWORD(String lexeme) {
 		Preconditions.checkNotNull(lexeme, "lexem cannot be null");
-		Preconditions.checkArgument(StringUtils.isNotBlank(lexeme), "lexem cannot be blank");
+		Preconditions.checkArgument(StringUtils.isNotBlank(lexeme), "lexeme cannot be blank");
 
 		Token token = new Token();
 
@@ -149,7 +151,7 @@ public class Token
 		return token;
 	}
 
-	/**
+	/*
 	 * Determine if the lexeme matches a keyword.  If it does, return the
 	 * token kind.  For example, if lexeme == "main", 
 	 * we will create a token with lexeme="main" and Kind=Kind.MAIN  
@@ -183,7 +185,7 @@ public class Token
 	public static enum Kind 
 	{
 		/** Reserved Words **/
-		ERROR(0),
+		ERROR(null, 0),
 
 		TIMES("*", 1),
 		DIV("/", 2),
@@ -210,8 +212,8 @@ public class Token
 
 		OPN_PAREN("(", 50),
 
-		NUMBER(60),
-		IDENTIFIER(61),
+		NUMBER(null, 60),
+		IDENTIFIER(null, 61),
 
 		SEMI_COL(":", 70),
 		
@@ -237,24 +239,20 @@ public class Token
 		MAIN("main", 200),
 		EOF("255", 113);
 
-		private String chars;
 		private int value;
-		
-		Kind(int value) {
-        	this.value = value;
-		}
+		private String staticLexeme;
 		
 		Kind(String lexeme, int value) {
-        	chars = lexeme;
+			staticLexeme = lexeme;
         	this.value = value;
 		} 
 
-		private String getChars() {
-			return chars;
+		public int getIntValue() {
+			return value;
 		}
 
-		public int getValue() {
-			return value;
+		public String getStaticLexeme() {
+			return staticLexeme;
 		}
 	} 
 }

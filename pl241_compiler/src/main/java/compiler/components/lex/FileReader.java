@@ -7,6 +7,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.PushbackReader;
 import java.io.Reader;
 
 import org.slf4j.Logger;
@@ -24,13 +25,16 @@ public class FileReader
 	public static final char EOF = (char) 255;
 
 	private Reader streamReader;
+	private PushbackReader pushBackReader;
 	private boolean validState = true;  //when error or end-of-file encountered, it is set to false
 	private char sym; 
+	private int resetPoint;
 
 	public FileReader(String fileName) { 
 		try {
 			InputStream inputStream = new FileInputStream(new File(fileName));  //file becomes an input stream
 			streamReader = new BufferedReader(new InputStreamReader(inputStream));  //read the file as a buffered input stream for efficiency
+			pushBackReader = new PushbackReader(streamReader);
         } catch (FileNotFoundException e) {
 			error("File was not found.\n" + e.toString());
 		}
@@ -43,7 +47,8 @@ public class FileReader
 	public char getSym() {
 		if(validState) {
 			try {
-				sym = (char) streamReader.read(); //advance the symbol
+				//sym = (char) streamReader.read(); //advance the symbol
+				sym = (char) pushBackReader.read(); //advance the symbol
 				checkEOF();
 			} catch (IOException e) {
 				error(e.toString());
@@ -65,4 +70,12 @@ public class FileReader
 		sym = ERROR;
         validState = false;
 	} 
+
+	public void pushBackChar(char c) {
+		try {
+			pushBackReader.unread(c);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 }
