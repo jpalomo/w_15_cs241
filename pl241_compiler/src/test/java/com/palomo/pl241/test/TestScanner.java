@@ -369,19 +369,20 @@ public class TestScanner
     	token = scanner.nextToken();
     	assertEquals(Kind.CLS_PAREN, token.kind); 
     }
-/*    @Test
+    @Test
     public void testComment() {
     	Scanner scanner = new Scanner("src/test/resources/unit_tests/comment.txt");
     	Token token = scanner.nextToken();
-    	assertEquals(Kind.EOF, scanner.token.getKind());   
+    	assertEquals(Kind.EOF, token.kind);   
     }
+    
     
     @Test
     public void testCommentWithIdent() {
     	Scanner scanner = new Scanner("src/test/resources/unit_tests/comment_with_ident.txt");
     	Token token = scanner.nextToken();
-    	assertEquals(Kind.DIV, scanner.token.getKind());   
+    	assertEquals(Kind.DIV, token.kind);   
     	token = scanner.nextToken();
-    	assertEquals(Kind.IDENTIFIER, scanner.token.getKind());   
-    }*/
+    	assertEquals(Kind.IDENTIFIER, token.kind);   
+    }
 }

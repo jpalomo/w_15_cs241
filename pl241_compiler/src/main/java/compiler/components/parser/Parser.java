@@ -25,40 +25,39 @@ public class Parser {
 	}
 
 	public void parse() {
+		getToken(); //get the first token
 		computation();
 	}
 
-	/**
+	/*
 	 * computation = 'main' {varDecl} {funcDecl} '{' statSequence '}' '.' 
 	 */
-	public void computation() {
-		getToken();
+	private void computation() {
 		expect(Kind.MAIN);
 
 		while (currentToken.kind != Kind.EOF && currentToken.kind != Kind.ERROR && currentToken.kind != Kind.PERIOD){
 			if(accept(Kind.VAR) || accept(Kind.ARRAY)) {  //first set of var decl
-				varDeclaration();
+				varDecl();
 			}
 	
 			else if(accept(Kind.FUNCTION) || accept(Kind.PROCEDURE)){
-				//TODO implemention of function or procedure delcaration
+				funcDecl();
 			}
 	
-			if (accept(Kind.BEGIN)) {
+			else if (accept(Kind.BEGIN)) {
 				getToken();  //eat the open brace
 				statSequence();
 				expect(Kind.END);
-				// got an open brace
-	
 			}
+			else error();
 		} 
 		expect(Kind.PERIOD);
 	}
 	
-	/**
-	 * typeDecl ident { ',' ident } ';'
+	/*
+	 * varDecl = typeDecl ident { ',' ident } ';'
 	 */
-	private void varDeclaration() {
+	private void varDecl() {
 		typeDecl();
 		ident();
 		while(accept(Kind.COMMA)) {
@@ -68,7 +67,57 @@ public class Parser {
 		expect(Kind.SEMI_COL);
 	}
 
-	/**
+	/*
+	 * funcDecl = ('function' | 'procedure') ident [formalParam] ';' funcBody ';'
+	 */
+	private void funcDecl() {
+		getToken();  //eat function or procedure token
+		ident();
+
+		if(accept(Kind.OPN_PAREN)) {
+			formalParam();
+		} 
+		expect(Kind.SEMI_COL);
+
+		funcBody();
+		expect(Kind.SEMI_COL);
+	}
+
+	/*
+	 * formalParam = '(' [ident { ',' ident }] ')'
+	 */
+	private void formalParam() {
+		expect(Kind.OPN_PAREN);
+		
+		if(accept(Kind.IDENTIFIER)) {
+			ident();
+			while(accept(Kind.COMMA)) {
+				getToken();  //eat the comma
+				ident();
+			}
+		} 
+
+		expect(Kind.CLS_PAREN); 
+	}
+
+	/*
+	 * funcBody = { varDecl } '{' [statSequence] '}' 
+	 */
+	private void funcBody() {
+		while(accept(Kind.VAR) || accept(Kind.ARRAY)) {
+			varDecl();
+		}
+
+		expect(Kind.BEGIN);
+
+		if(FirstSets.STATEMENT.contains(currentToken.getLexeme())) {
+			statSequence();
+		}
+
+		expect(Kind.END); 
+	}
+
+	/*
 	 * typeDecl = 'var' | 'array' '[' number ']' { '[' number ']' }
 	 */
 	private void typeDecl() {
@@ -76,11 +125,20 @@ public class Parser {
 			getToken(); //eat the var token
 		}
 		else if(currentToken.kind == Kind.ARRAY) {
-			//array declaration
+			getToken(); // eat the array token
+			expect(Kind.OPN_BRACK);
+			number();
+			expect(Kind.CLS_BRACK);
+
+			while(accept(Kind.OPN_BRACK)) {
+				getToken(); //eat the open bracket
+				number();
+				expect(Kind.CLS_BRACK);
+			}
 		}
 	}
 
-	/**
+	/*
 	 * statement { ';' statement }
 	 */
 	private void statSequence() {
@@ -92,7 +150,7 @@ public class Parser {
 		
 	};
 
-	/**
+	/*
 	 * statement = assignment | funcCall | ifStatement | whileStatement | returnStatement
 	 */
 	private void statement() {
@@ -103,62 +161,109 @@ public class Parser {
 			funcCall();
 		}
 		else if(accept(Kind.IF)) {
-			//ifStatement();
+			ifStatement();
 		}
 		else if(accept(Kind.WHILE)) {
-			//whileStatement();
+			whileStatement();
 		}
 		else if(accept(Kind.RETURN)) {
-			//returnStatement();
+			returnStatement();
 		}
 	}
 
-	/**
+	/*
 	 * assignment = 'let' designator '<-' expression
 	 */
-	public void assignment() {
+	private void assignment() {
 		expect(Kind.LET);
 		designator();
 		expect(Kind.BECOMES);
 		expression();
 	}
 
-	/**
+	/*
 	 * funcCall = 'call' ident [ '(' [expression { ',' expression } ] ')' ]
 	 */
-	public void funcCall() {
+	private void funcCall() {
 		expect(Kind.CALL);
 		ident();
-		expect(Kind.OPN_PAREN);
-		expression();
-		while(accept(Kind.COMMA)) {
+		if(accept(Kind.OPN_PAREN)) {
+			getToken();  //eat the open paren
+			expression();
+			while(accept(Kind.COMMA)) {
+				getToken(); //eat the comma
+				expression();
+			}
+			expect(Kind.CLS_PAREN);
+		}
+	}
+
+	/*
+	 * ifStatement = 'if' relation 'then' statSequence [ 'else' statSequence ] 'fi' 
+	 */
+	private void ifStatement() {
+		expect(Kind.IF);
+		relation();
+		expect(Kind.THEN);
+		statSequence();
+
+		if(accept(Kind.ELSE)) {
+			getToken(); //eat the else
+			statSequence();
+		}
+		
+		expect(Kind.FI);
+	}
+
+	/*
+	 * whileStatement = 'while' relation 'do' statSequence 'od'
+	 */
+	private void whileStatement() {
+		expect(Kind.WHILE);
+		relation();
+		expect(Kind.DO);
+		statSequence();
+		expect(Kind.OD);
+	}
+
+	/*
+	 * returnStateement = 'return' [ expression ]
+	 */
+	private void returnStatement() {
+		expect(Kind.RETURN);
+
+		if(accept(Kind.IDENTIFIER)) {
 			expression();
 		}
-		expect(Kind.CLS_PAREN);
 	}
-
-	/**
+	
+	/*
 	 * designator = ident { '[' expression ']' }
 	 */
-	public void designator() {
+	private void designator() {
 		ident(); //TODO call identifier, dont just eat it???
 		while(accept(Kind.OPN_BRACK)) {
-			//expression();  //TODO implement expression to handle array declarations
-			//expect(Kind.CLS_BRACK);
+			getToken(); //eat the open bracket
+			expression(); 
+			expect(Kind.CLS_BRACK);
 		}
 	}
 
-	/**
+	/*
 	 * expression = term  { ('+' | '-') term }
 	 */
-	public void expression() {
+	private void expression() {
 		term();
+		while(accept(Kind.PLUS) || accept(Kind.MINUS)) {
+			getToken();
+			term();
+		}
 	}
 
-	/**
+	/*
 	 * term = factor { ('*' | '/') factor }
 	 */
-	public void term() {
+	private void term() {
 		factor();
 		while(accept(Kind.TIMES) || accept(Kind.DIV)) {
 			getToken();  //eat the times or div
@@ -166,10 +271,19 @@ public class Parser {
 		}
 	}
 
-	/**
+	/*
+	 * relation = expression relOp expression
+	 */
+	private void relation() {
+		expression();
+		getToken();//TODO:  do relational comparison here
+		expression();
+	}
+
+	/*
 	 * factor = designator | number | '(' expression ')' | funcCall
 	 */
-	public void factor() {
+	private void factor() {
 		if(accept(Kind.IDENTIFIER)) {
 			designator();
 		}
@@ -187,18 +301,18 @@ public class Parser {
 		} 
 	}
 
-	/**
+	/*
 	 * ident = letter { letter | digit }
 	 */
-	public void ident() { //TODO need to determine how to return a node here
+	private void ident() { //TODO need to determine how to return a node here
 		System.out.println("Identifier found: " + currentToken.getLexeme());
 		getToken();
 	}
 
-	/**
+	/*
 	 * number = digit {digit}
 	 */
-	public void number() {
+	private void number() {
 		System.out.println("Number found: " + currentToken.getLexeme());
 		getToken();
 	}
@@ -217,7 +331,8 @@ public class Parser {
 	}
 
 	/*
-	 * 
+	 * Determines whether the current token's kind matches the 
+	 * formal parameter kind 
 	 */
 	private boolean accept(Kind kind) {
 		if(currentToken.kind == kind){
@@ -229,16 +344,6 @@ public class Parser {
 	private void getToken(){
 		currentToken = scanner.nextToken();
 	}
-
-
-//	private boolean tokenFirstSet(Kind currentKind, Kind...kinds) {
-//		for(Kind kind : kinds){
-//			if(currentKind == kind){
-//				return true;
-//			}
-//		}
-//		return false;
-//	}
 
 	private void error(Kind expected) {
 		System.err.println("Syntax error.  Expected: " + expected.name() + " but recieved " + currentToken.kind.name()); 

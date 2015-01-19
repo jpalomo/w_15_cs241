@@ -10,15 +10,15 @@ import compiler.components.parser.Parser;
 public class TestParser {
 
 	@Test
-	public void testExpect(){
-		Parser parser = new Parser("src/test/resources/unit_tests/token_main.txt"); 
+	public void test001(){
+		Parser parser = new Parser("src/test/resources/test001.txt"); 
 		parser.parse();
 		assertEquals(Token.Kind.EOF, parser.currentToken.kind); 
 	}
 
 	@Test
-	public void test001(){
-		Parser parser = new Parser("src/test/resources/unit_tests/test001_no_comment.txt"); 
+	public void test006(){
+		Parser parser = new Parser("src/test/resources/test006.txt"); 
 		parser.parse();
 		assertEquals(Token.Kind.EOF, parser.currentToken.kind); 
 	}

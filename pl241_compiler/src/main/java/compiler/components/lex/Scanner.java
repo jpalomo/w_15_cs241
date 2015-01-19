@@ -5,7 +5,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Preconditions;
-import compiler.components.lex.Token.Kind;
 
 public class Scanner
 {
@@ -49,22 +48,15 @@ public class Scanner
 			number();
 		}
 		else {
-//			if(inputSym == (char) '/') { 
-//				next();
-//				fileReader.setResetPoint();
-//				if(inputSym == (char) '/') {  //comment found
-//					while( inputSym != (char) 10 && inputSym != FileReader.EOF) {  //read to the EOL
-//						next();
-//					}
-//					return nextToken();
-//				}
-//				fileReader.reset(); //reset back one character and process
-//			}
 			relOpOrKeyword();
 		}
 		return token;
 	}
 
+	public void error(String errorMsg) {
+		fileReader.error(errorMsg);
+	}
+	
 	private void identifierOrKeyword() {
 		StringBuilder lexeme = new StringBuilder();
 		lexeme.append(inputSym);
@@ -108,7 +100,12 @@ public class Scanner
 		lexeme.append(inputSym);
 		next();	//consume the character
 
-		if(inputSym == '=' || inputSym == '-' ) {  //either relop or becomes
+		if(lexeme.toString().equalsIgnoreCase("/") && inputSym == '/') { //comment
+			throwAwayLine();
+			nextToken(); 
+			return;
+		} 
+		else if(inputSym == '=' || inputSym == '-' ) {  //either relop or becomes
 			lexeme.append(inputSym);
 			next();
 		} 
@@ -117,19 +114,8 @@ public class Scanner
         LOGGER.info("RelOp or Keyword Lexeme: " + token.getLexeme()); 
 	}
 
-	private boolean isOtherChar() {
-		if(!isChar() && !Character.isWhitespace(inputSym) && inputSym != FileReader.EOF && inputSym != FileReader.ERROR){
-			return true;
-		}
-		return false;
-	}
-
-	public void error(String errorMsg) {
-		fileReader.error(errorMsg);
-	}
-
-	/**
-	 * Has the file reader return the current symbol to be consumed. * 
+	/*
+	 * Has the file reader return the current symbol to be consumed.
 	 */
 	private void next() {
 		inputSym = fileReader.getSym();
@@ -137,9 +123,13 @@ public class Scanner
 		LOGGER.trace("Retrieved: " + inputSym); 
 	} 
 
-	private void pushBack(char c) {
-		inputSym = c;
-		charPos--;
-		LOGGER.trace("Pushbacked char: " + inputSym); 	
+	/*
+	 * Read to the end of the line looking for the newline or EOR or ERROR symbols
+	 */
+	private void throwAwayLine() {
+		do {
+			next();
+		}while(inputSym != '\n' && inputSym != FileReader.EOF && inputSym != FileReader.ERROR); 
+		next();//toss the newline if it was there otherwise an error or EOF is present
 	}
 }
