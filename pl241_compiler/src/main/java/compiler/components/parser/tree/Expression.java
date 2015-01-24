@@ -1,32 +1,43 @@
 package compiler.components.parser.tree;
 
-import compiler.components.parser.tree.TreeNode.ExpressionOp;
+/**
+ * expression = term  { ('+' | '-') term }
+ */ 
+public class Expression extends TreeNode {
 
-public class Expression {
-	ExpressionOp type;
 	int value;
+	Symbol symbol;
+	ExpressionType type;
+	String expression;
 
-	Expression leftExpression;
-	Expression rightExpression; 
-
-	public Expression(ExpressionOp operation, Expression left, Expression right) {
-		switch(operation){
-			case PLUS:
-				value = left.getValue() + right.getValue();
-				break;
-			case MINUS:
-				value = left.getValue() - right.getValue();
-				break;
-			case MULT:
-				value = left.getValue() * right.getValue();
-				break;
-			case DIV:
-				value = left.getValue() / right.getValue();
-				break;
-		} 
+	public Expression(int lineNum, int charPos, ExpressionType type) {
+		super(lineNum, charPos);
+		this.type = type;
 	}
 
-	public int getValue() {
-		return value;
-	} 
+	public enum ExpressionType {
+		NUMBER(), FUNCCALL(), EXPRESSION();
+	}
+
+	/**
+	 * Sets the expression as a string for parsing later 
+	 * @param factor1
+	 * @param factor2
+	 * @param op
+	 */
+	public void setExpression(Factor factor1, Factor factor2, Symbol op){
+		StringBuilder sb = new StringBuilder();
+		sb.append(factor1.getFactorIdent().toString());
+		sb.append(op.toString());
+		sb.append(factor2.getFactorIdent().toString());
+	}
+
+	/**
+	 * 
+	 * @return a string representation of the expression
+	 * (e.g. x*y, x*2, 2*x)
+	 */
+	public String getExpression() {
+		return expression;
+	}
 }
