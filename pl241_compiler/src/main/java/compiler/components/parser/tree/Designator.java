@@ -5,23 +5,25 @@ import java.util.List;
 /**
  * designator = ident { '[' expression ']' }
  */
-public class Designator extends Factor {
+public class Designator extends TreeNode {
 
-	List<Expression> arrayExprs;
-
-	public Designator(int lineNum, int charPos, Symbol identifier, FactorType type) {
-		super(lineNum, charPos, type);
-	} 
-
-	public List<Expression> getArrayExprs() {
-		return arrayExprs;
+	private Ident ident;
+	private List<Expression> expression;  //can be null
+	
+	public Designator(int lineNum, int charPos, Ident identifier, List<Expression> expression) {
+		super(lineNum, charPos);
+		this.expression = expression;
 	}
 
-	public void setArrayExprs(List<Expression> arrayExprs) {
-		this.arrayExprs = arrayExprs;
-	} 
+	/**
+	 * Expression can be null
+	 * @return
+	 */
+	public List<Expression> getExpression() {
+		return expression;
+	}
 
-	public enum DesignatorType {
-		IDENT(), ARRAY();
+	public Ident getIdent() {
+		return ident;
 	}
 }

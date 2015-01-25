@@ -5,18 +5,18 @@ import java.util.List;
 /**
  * funcCall = 'call' ident [ '(' [expression { ',' expression } ] ')' ]
  */
-public class FuncCall extends Factor {
+public class FuncCall extends TreeNode {
 
-	private Symbol funcIdent;
+	private Ident funcIdent;
 	private List<Expression> expressions;
 	
-	public FuncCall(int lineNum, int charPos, Symbol funcIdent, List<Expression> expressions) {
-		super(lineNum, charPos, FactorType.FUNCCALL);
+	public FuncCall(int lineNum, int charPos, Ident funcIdent, List<Expression> expressions) {
+		super(lineNum, charPos);
 		this.funcIdent = funcIdent;
 		this.expressions = expressions;
 	}
 
-	public Symbol getFuncIdent() {
+	public Ident getFuncIdent() {
 		return funcIdent;
 	}
 

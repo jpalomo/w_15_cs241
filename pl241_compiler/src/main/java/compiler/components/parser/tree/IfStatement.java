@@ -5,15 +5,14 @@ import java.util.List;
 /**
  * ifStatement = 'if' relation 'then' statSequence [ 'else' statSequence ] 'fi' 
  */ 
-public class IfStatement extends Statement {
+public class IfStatement extends TreeNode {
 
 	Relation relation;
 	List<Statement> ifBody;
 	List<Statement> elseBody;
 
 	public IfStatement(int lineNum, int charPos, Relation relation, List<Statement> ifBody, List<Statement> elseBody) {
-		super(lineNum, charPos, StatementType.IF);
-		this.statementType = StatementType.IF;
+		super(lineNum, charPos);
 	}
 
 	public Relation getRelation() {

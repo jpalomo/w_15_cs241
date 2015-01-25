@@ -10,21 +10,26 @@ import org.slf4j.LoggerFactory;
 import compiler.components.lex.Scanner;
 import compiler.components.lex.Token;
 import compiler.components.lex.Token.Kind;
+import compiler.components.parser.tree.Assignment;
 import compiler.components.parser.tree.Computation;
 import compiler.components.parser.tree.Designator;
 import compiler.components.parser.tree.Expression;
 import compiler.components.parser.tree.Expression.ExpressionType;
 import compiler.components.parser.tree.Factor;
 import compiler.components.parser.tree.Factor.FactorType;
+import compiler.components.parser.tree.ReturnStatement;
+import compiler.components.parser.tree.Statement.StatementBuilder;
 import compiler.components.parser.tree.FuncBody;
 import compiler.components.parser.tree.FuncCall;
 import compiler.components.parser.tree.FuncDecl;
+import compiler.components.parser.tree.Ident;
 import compiler.components.parser.tree.IfStatement;
 import compiler.components.parser.tree.Number;
 import compiler.components.parser.tree.Relation;
 import compiler.components.parser.tree.Statement;
 import compiler.components.parser.tree.Symbol;
 import compiler.components.parser.tree.VarDecl;
+import compiler.components.parser.tree.WhileStatement;
 
 /**
  * Implementation of a top-down recursive descent parser.
@@ -43,9 +48,10 @@ public class Parser {
 		scanner = new Scanner(fileName);
 	}
 
-	public void parse() throws ParsingException {
+	public Parser parse() throws ParsingException {
 		getToken(); //get the first token
 		computationNode = computation();
+		return this;
 	}
 
 	/**
@@ -66,13 +72,14 @@ public class Parser {
 			}
 	
 			else if(accept(Kind.FUNCTION) || accept(Kind.PROCEDURE)){
-				FuncDecl funcs = funcDecl();
-				funcDeclList.add(funcs);
+				FuncDecl funcDecl = funcDecl();
+				funcDeclList.add(funcDecl);
 			}
 	
 			else if (accept(Kind.BEGIN)) {
 				getToken();  //eat the open brace
-				statSequence();
+				List<Statement> statements = statSequence();
+				statSequence.addAll(statements); //TODO might be able to remove this and just add return the list to statsequece list obj
 				expect(Kind.END);
 			}
 			else {
@@ -93,13 +100,13 @@ public class Parser {
 
 		typeDecl();  //TODO dont need the type at this point for the parse tree
 
-		Symbol symbol = ident();
-		symbols.add(new VarDecl(scanner.lineNum, scanner.charPos, symbol));
+		Ident ident = ident();
+		symbols.add(new VarDecl(scanner.lineNum, scanner.charPos, ident));
 
 		while(accept(Kind.COMMA)) {
 			getToken(); // eat the comma
-			symbol = ident();
-			symbols.add(new VarDecl(scanner.lineNum, scanner.charPos, symbol));
+			ident = ident();
+			symbols.add(new VarDecl(scanner.lineNum, scanner.charPos, ident));
 		} 
 		expect(Kind.SEMI_COL);
 		
@@ -113,9 +120,9 @@ public class Parser {
 	private FuncDecl funcDecl() throws ParsingException {
 		getToken();  //eat function or procedure token
 
-		Symbol funcName = ident();
+		Ident funcName = ident();
 
-		List<Symbol> formalParams = null;
+		List<Ident> formalParams = null;
 		if(accept(Kind.OPN_PAREN)) {
 			formalParams = formalParam();
 		} 
@@ -133,10 +140,10 @@ public class Parser {
 	 * formalParam = '(' [ident { ',' ident }] ')'
 	 * @throws ParsingException 
 	 */
-	private List<Symbol> formalParam() throws ParsingException {
+	private List<Ident> formalParam() throws ParsingException {
 		expect(Kind.OPN_PAREN);
 		
-		List<Symbol> params = new ArrayList<Symbol>();
+		List<Ident> params = new ArrayList<Ident>();
 		if(accept(Kind.IDENTIFIER)) {
 			params.add(ident());
 			while(accept(Kind.COMMA)) {
@@ -213,23 +220,26 @@ public class Parser {
 	 * statement = assignment | funcCall | ifStatement | whileStatement | returnStatement
 	 * @throws ParsingException 
 	 */
-	//TODO fix this for parsing
 	private Statement statement() throws ParsingException {
 		Statement statement = null;
 		if(accept(Kind.LET)) {
-			assignment();
+			Assignment assignment = assignment();
+			statement = Statement.builder(assignment.getLineNum(), assignment.getCharPos()).setAssignment(assignment).build();
 		}
 		else if (accept(Kind.CALL)) {
 			funcCall();
 		}
 		else if(accept(Kind.IF)) {
-			statement = ifStatement();
+			IfStatement ifStatement = ifStatement();
+			statement = Statement.builder(ifStatement.getLineNum(), ifStatement.getCharPos()).setIfStatement(ifStatement).build();
 		}
 		else if(accept(Kind.WHILE)) {
-			whileStatement();
+			WhileStatement whileStatement = whileStatement();
+			statement = Statement.builder(whileStatement.getLineNum(), whileStatement.getCharPos()).setWhileStatement(whileStatement).build();
 		}
 		else if(accept(Kind.RETURN)) {
-			returnStatement();
+			ReturnStatement returnStatement = returnStatement();
+			statement = Statement.builder(returnStatement.getLineNum(), returnStatement.getCharPos()).setReturnStatement(returnStatement).build();
 		}
 		return statement;
 	}
@@ -238,11 +248,17 @@ public class Parser {
 	 * assignment = 'let' designator '<-' expression
 	 * @throws ParsingException 
 	 */
-	private void assignment() throws ParsingException {
+	private Assignment assignment() throws ParsingException {
 		expect(Kind.LET);
-		designator();
+
+		Designator designator = designator();
+		
 		expect(Kind.BECOMES);
-		expression();
+
+		Expression expression = expression();
+
+		Assignment assignment = new Assignment(scanner.lineNum, scanner.charPos, designator, expression);
+		return assignment; 
 	}
 
 	/**
@@ -251,7 +267,7 @@ public class Parser {
 	 */
 	private FuncCall funcCall() throws ParsingException {
 		expect(Kind.CALL);
-		Symbol funcIdent = ident();
+		Ident funcIdent = ident();
 		List<Expression> expressions = new ArrayList<Expression>();
 		
 		if(accept(Kind.OPN_PAREN)) {
@@ -300,24 +316,35 @@ public class Parser {
 	 * whileStatement = 'while' relation 'do' statSequence 'od'
 	 * @throws ParsingException 
 	 */
-	private void whileStatement() throws ParsingException {
+	private WhileStatement whileStatement() throws ParsingException {
 		expect(Kind.WHILE);
-		relation();
+		Relation relation = relation();
 		expect(Kind.DO);
-		statSequence();
+		List<Statement> statSequence = statSequence();
 		expect(Kind.OD);
+
+		WhileStatement whileStatement = new WhileStatement(scanner.lineNum, scanner.charPos, relation, statSequence);
+		return whileStatement;
 	}
 
 	/**
-	 * returnStateement = 'return' [ expression ]
+	 * returnStatement = 'return' [ expression ]
 	 * @throws ParsingException 
 	 */
-	private void returnStatement() throws ParsingException {
+	private ReturnStatement returnStatement() throws ParsingException {
 		expect(Kind.RETURN);
 
-		if(accept(Kind.IDENTIFIER)) {
-			expression();
+		Expression expression = null;
+		if(accept(Kind.IDENTIFIER) || accept(Kind.NUMBER)) {
+			expression = expression();
 		}
+		else if(accept(Kind.OPN_PAREN) || accept(Kind.FUNCTION) || accept(Kind.PROCEDURE)) { //identifier is not)
+			getToken();  //eat the paren, 'function', or 'procedure' token
+			expression = expression();
+		}
+
+		ReturnStatement returnStatement = new ReturnStatement(scanner.lineNum, scanner.charPos, expression);
+		return returnStatement;
 	}
 	
 	/**
@@ -325,7 +352,7 @@ public class Parser {
 	 * @throws ParsingException 
 	 */
 	private Designator designator() throws ParsingException {
-		Symbol symbol = ident(); //TODO call identifier, dont just eat it???
+		Ident ident = ident(); //TODO call identifier, dont just eat it???
 		List<Expression> arrayExpr = new ArrayList<Expression>();
 		while(accept(Kind.OPN_BRACK)) {
 			getToken(); //eat the open bracket
@@ -333,11 +360,7 @@ public class Parser {
 			expect(Kind.CLS_BRACK);
 		}
 
-		Designator designator = new Designator(scanner.lineNum, scanner.charPos, symbol, FactorType.ARRAY);
-
-		if(arrayExpr.size() > 0) {
-			designator.setArrayExprs(arrayExpr); 
-		}
+		Designator designator = new Designator(scanner.lineNum, scanner.charPos, ident, arrayExpr);
 		return designator;
 	}
 
@@ -349,13 +372,13 @@ public class Parser {
 		Expression expression = null;
 		Factor factor1 = term();
 		while(accept(Kind.PLUS) || accept(Kind.MINUS)) {
-			Symbol operation = new Symbol(scanner.lineNum, scanner.charPos, currentToken.getLexeme()); 
+			Symbol operation = new Symbol(currentToken.getLexeme()); 
 			getToken();
 
 			Factor factor2 = term();
 
 			if(factor1.getType().equals(FactorType.NUMBER) && factor1.getType().equals(FactorType.NUMBER)) {
-				factor1 = Factor.combineFactors(factor1, factor2, operation.toString());
+				factor1 = Factor.combineFactors(factor1, factor2, operation);
 				expression = new Expression(scanner.lineNum, scanner.charPos, ExpressionType.NUMBER);
 			}
 			else if(factor1.getType().equals(FactorType.IDENT) || factor2.getType().equals(FactorType.IDENT)) {
@@ -373,13 +396,13 @@ public class Parser {
 	private Factor term() throws ParsingException {
 		Factor factor1= factor();
 		while(accept(Kind.TIMES) || accept(Kind.DIV)) {
-			Symbol symbol = new Symbol(scanner.lineNum, scanner.charPos, currentToken.getLexeme());
+			Symbol symbol = new Symbol(currentToken.getLexeme());
 			getToken();  //eat the times or div;
 
 			Factor factor2 = factor();
 
 			if(factor1.getType().equals(FactorType.NUMBER) && factor2.getType().equals(FactorType.NUMBER)) {
-				factor1 = Factor.combineFactors(factor1, factor2, symbol.getSymbol());
+				factor1 = Factor.combineFactors(factor1, factor2, symbol);
 			}
 		}
 		return factor1;
@@ -392,7 +415,7 @@ public class Parser {
 	private Relation relation() throws ParsingException {
 		Expression leftExpr = expression();
 
-		Symbol relOp = new Symbol(scanner.lineNum, scanner.charPos, currentToken.getLexeme());
+		Symbol relOp = new Symbol(currentToken.getLexeme());
 
 		getToken();//TODO:  do relational comparison here??
 
@@ -408,36 +431,47 @@ public class Parser {
 	 * @throws ParsingException 
 	 */
 	private Factor factor() throws ParsingException {
+		Factor factor; 
+
 		if(accept(Kind.IDENTIFIER)) {
 			Designator designator = designator();
-			return designator;
+			factor = Factor.builder(scanner.lineNum, scanner.charPos).setDesignator(designator).build();
 		}
 		else if(accept(Kind.NUMBER)) {
 			Number number = number();
-			return number;
+			factor = Factor.builder(scanner.lineNum, scanner.charPos).setNumber(number).build();
 		}
 		else if(accept(Kind.OPN_PAREN)) {
 			Expression expression = expression();
-			Factor factor = new Factor(scanner.lineNum, scanner.charPos, FactorType.EXPRESSION);
-			return factor;
+
+			if(expression.getType().equals(ExpressionType.NUMBER)) {
+				Number number = new Number(scanner.lineNum, scanner.charPos, expression.getValue());
+				factor = Factor.builder(scanner.lineNum, scanner.charPos).setNumber(number).build();
+			}
+			else {
+				factor = Factor.builder(scanner.lineNum, scanner.charPos).setExpression(expression).build();
+			}
 		}
 		else if(accept(Kind.CALL)) {
 			FuncCall funcCall = funcCall();
-			return funcCall;
+			factor = Factor.builder(scanner.lineNum, scanner.charPos).setFuncCall(funcCall).build();
         }
 		else {
 			throw new ParsingException();
 		} 
+		
+		return factor;
 	}
 
 	/**
 	 * ident = letter { letter | digit }
 	 */
-	private Symbol ident() {
+	private Ident ident() {
 		System.out.println("Identifier found: " + currentToken.getLexeme());
-		Symbol symbol = new Symbol(scanner.lineNum, scanner.charPos, currentToken.getLexeme());
+		Symbol symbol = new Symbol(currentToken.getLexeme());
+		Ident ident = new Ident(scanner.lineNum, scanner.charPos, symbol);
 		getToken();
-		return symbol;
+		return ident;
 	}
 
 	/**

@@ -8,34 +8,25 @@ import java.util.List;
 public class Computation extends TreeNode {
 
 	private List<Statement> statSequence;
-	private List<VarDecl> varDecl;
-	private List<FuncDecl> funcDecl;
+	private List<VarDecl> varDecls;
+	private List<FuncDecl> funcDecls;
 
 	public Computation(int lineNum, int charPos, List<VarDecl> varDecls, List<FuncDecl> funcDecls, List<Statement> statSequence) {
 		super(lineNum, charPos);
+		this.varDecls = varDecls;
+		this.funcDecls = funcDecls;
+		this.statSequence = statSequence; 
 	}
 	
 	public List<Statement> getStatSequence() {
 		return statSequence;
 	}
 
-	public void setStatSequence(List<Statement> statSequence) {
-		this.statSequence = statSequence;
-	}
-
 	public List<VarDecl> getVarDecl() {
-		return varDecl;
-	}
-
-	public void setVarDecl(List<VarDecl> varDecl) {
-		this.varDecl = varDecl;
+		return varDecls;
 	}
 
 	public List<FuncDecl> getFuncDecl() {
-		return funcDecl;
+		return funcDecls;
 	}
-
-	public void setFuncDecl(List<FuncDecl> funcDecl) {
-		this.funcDecl = funcDecl;
-	} 
 }

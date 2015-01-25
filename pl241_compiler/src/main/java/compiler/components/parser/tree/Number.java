@@ -3,16 +3,16 @@ package compiler.components.parser.tree;
 /**
  * number = digit {digit}
  */
-public class Number extends Factor {
+public class Number extends TreeNode {
 
-	int value;
+	int numberValue;
 
-	public Number(int lineNum, int charPos, int value) {
-		super(lineNum, charPos, FactorType.NUMBER);
-		this.value = value;
+	public Number(int lineNum, int charPos, int numberValue) {
+		super(lineNum, charPos);
+		this.numberValue = numberValue;
 	}
 
-	public int getValue() {
-		return value;
+	public int getNumberValue() {
+		return numberValue;
 	} 
 }

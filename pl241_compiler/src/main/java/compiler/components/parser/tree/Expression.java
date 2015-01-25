@@ -5,14 +5,20 @@ package compiler.components.parser.tree;
  */ 
 public class Expression extends TreeNode {
 
-	int value;
-	Symbol symbol;
-	ExpressionType type;
-	String expression;
+	private int value;
+	private Symbol symbol;
+	private ExpressionType type;
+	private String expression;
 
 	public Expression(int lineNum, int charPos, ExpressionType type) {
 		super(lineNum, charPos);
 		this.type = type;
+	}
+
+	public Expression(int lineNum, int charPos, int value, ExpressionType type) {
+		super(lineNum, charPos);
+		this.type = type;
+		this.value = value;
 	}
 
 	public enum ExpressionType {
@@ -37,6 +43,22 @@ public class Expression extends TreeNode {
 	 * @return a string representation of the expression
 	 * (e.g. x*y, x*2, 2*x)
 	 */
+	public String getExpressionAsString() {
+		return expression;
+	}
+
+	public int getValue() {
+		return value;
+	}
+
+	public Symbol getSymbol() {
+		return symbol;
+	}
+
+	public ExpressionType getType() {
+		return type;
+	}
+
 	public String getExpression() {
 		return expression;
 	}

@@ -5,18 +5,14 @@ package compiler.components.parser.tree;
  */ 
 public class VarDecl extends TreeNode {
 
-	private Symbol symbol;
+	private Ident ident;
 
-	public VarDecl(int lineNum, int charPos, Symbol symbol) {
+	public VarDecl(int lineNum, int charPos, Ident ident) {
 		super(lineNum, charPos); 
-		this.symbol = symbol;
+		this.ident = ident;
 	}
 
-	public Symbol getSymbol() {
-		return symbol;
+	public Ident getIdent() {
+		return ident;
 	} 
-
-	public String getValue() {
-		return symbol.toString();
-	}
 }
