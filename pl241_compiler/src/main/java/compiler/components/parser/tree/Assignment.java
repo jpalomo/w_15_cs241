@@ -9,6 +9,8 @@ public class Assignment extends TreeNode{
 
 	public Assignment(int lineNum, int charPos, Designator designator, Expression expression) {
 		super(lineNum, charPos);
+		this.designator = designator;
+		this.expression = expression;
 	}
 
 	public Designator getDesignator() {

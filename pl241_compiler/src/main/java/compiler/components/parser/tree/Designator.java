@@ -13,6 +13,7 @@ public class Designator extends TreeNode {
 	public Designator(int lineNum, int charPos, Ident identifier, List<Expression> expression) {
 		super(lineNum, charPos);
 		this.expression = expression;
+		this.ident = identifier;
 	}
 
 	/**

@@ -9,11 +9,17 @@ public class Factor extends TreeNode {
 
 	private FactorType factorType;
 
-	private int numberValue; //the value if factor is a number
 	private Designator designator;
 	private Number number;
 	private Expression expression;
 	private FuncCall funcCall;
+	private int numberValue; //the value if factor is a number
+	private boolean isDesignator = false;
+	private boolean isNumber = false;
+	private boolean isExpression = false;
+	private boolean isFuncCall = false;
+	
+	private String factorAsString;
 
 	private Factor(int lineNum, int charPos){
 		super(lineNum, charPos);
@@ -23,68 +29,49 @@ public class Factor extends TreeNode {
 		return designator;
 	}
 	
-	private void setDesignator(Designator designator) {
-		this.designator = designator;
-	}	
-	
 	public Number getNumber() {
 		return number;
 	}
-	
-	private void setNumber(Number number) {
-		this.number = number;
-	}	
 	
 	public Expression getExpression() {
 		return expression;
 	}
 
-	public void setExpression(Expression expression) {
-		this.expression = expression;
-	}
-	
 	public FuncCall getFuncCall() {
 		return funcCall;
-	}
-	
-	public void setFuncCall(FuncCall funcCall) {
-		this.funcCall = funcCall;
 	}
 	
 	public int getNumberValue() {
 		return numberValue;
 	}
 	
-	private void setNumberValue(int numberValue) {
-		this.numberValue = numberValue;
+	public boolean isNumber() {
+		return isNumber;
+	}
+	
+	public boolean isDesignator() {
+		return isDesignator;
 	}
 
+	public boolean isExpression() {
+		return isExpression;
+	}
+
+	public boolean isFuncCall() {
+		return isFuncCall;
+	}
 	public FactorType getFactorType() {
 		return factorType;
-	}
-
-	private void setFactorType(FactorType factorType) {
-		this.factorType = factorType;
 	}
 
 	public static FactorBuilder builder(int lineNum, int charPos) {
 		return new FactorBuilder(lineNum, charPos);
 	}
 
-	public static Factor combineFactors(Factor factor1, Factor factor2, Symbol op){
-		Number factor = null;
-		Number num1 = (Number) factor1;
-		Number num2 = (Number) factor2;
-		if(op.toString().equals("*")) {
-			int result = num1.getValue() * num2.getValue();
-			factor = new Number(factor2.getLineNum(), factor2.getCharPos(), new Symbol(String.valueOf(result)));
-		}
-		else if(op.toString().equals("/")) {
-			int result = num1.getValue() / num2.getValue();
-			factor = new Number(num1.getLineNum(), num2.getCharPos(),  new Symbol(String.valueOf(result)));
-		}
-		return factor;
-	}
+//	public static String createRegFactor(Factor factor1, Symbol op, Factor factor2) {
+//		StringBuilder sb = new StringBuilder();
+//		factor1.
+//	}
 
 	public enum FactorType {
 		NUMBER(), FUNCCALL(), EXPRESSION(), DESIGNATOR();
@@ -95,12 +82,15 @@ public class Factor extends TreeNode {
 		private int charPos;
 		private FactorType factorType;
 
-		private int numberValue; //the value if factor is a number
 		private Designator designator;
 		private Number number;
 		private Expression expression;
 		private FuncCall funcCall;
-
+		private int numberValue; //the value if factor is a number
+		private boolean isDesignator = false;
+		private boolean isNumber = false;
+		private boolean isExpression = false;
+		private boolean isFuncCall = false;
 		private FactorBuilder(int lineNum, int charPos){
 			this.lineNum = lineNum;
 			this.charPos = charPos;
@@ -109,6 +99,7 @@ public class Factor extends TreeNode {
 		public FactorBuilder setDesignator(Designator designator) {
 			this.designator = designator;
 			this.factorType = FactorType.DESIGNATOR;
+			this.isDesignator = true;
 			return this;
 		}
 
@@ -116,18 +107,21 @@ public class Factor extends TreeNode {
 			this.number = number;
 			this.factorType = FactorType.NUMBER;
 			this.numberValue = number.getNumberValue();
+			this.isNumber = true;
 			return this;
 		};
 
 		public FactorBuilder setExpression(Expression expression) {
 			this.expression = expression;
 			this.factorType = FactorType.EXPRESSION;
+			this.isExpression = true;
 			return this;
 		}
 
 		public FactorBuilder setFuncCall(FuncCall funcCall) {
 			this.funcCall = funcCall;
 			this.factorType = FactorType.FUNCCALL;
+			this.isFuncCall = true;
 			return this;
 		};
 
@@ -135,12 +129,16 @@ public class Factor extends TreeNode {
 			Preconditions.checkNotNull(factorType, "statement type must be set before building");
 
 			Factor factor = new Factor(lineNum, charPos);
-			factor.setDesignator(designator);
-			factor.setNumber(number);
-			factor.setExpression(expression);
-			factor.setFuncCall(funcCall);
-			factor.setFactorType(factorType);
-			factor.setNumberValue(numberValue);
+			factor.designator = designator;
+			factor.number = number;
+			factor.expression = expression;
+			factor.funcCall = funcCall;
+			factor.factorType = factorType;
+			factor.numberValue = numberValue;
+			factor.isNumber = isNumber;
+			factor.isDesignator = isDesignator;
+			factor.isExpression = isExpression;
+			factor.isFuncCall = isFuncCall;
 			return factor; 
 		}
 	}

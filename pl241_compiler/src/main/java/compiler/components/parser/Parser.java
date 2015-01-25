@@ -14,11 +14,7 @@ import compiler.components.parser.tree.Assignment;
 import compiler.components.parser.tree.Computation;
 import compiler.components.parser.tree.Designator;
 import compiler.components.parser.tree.Expression;
-import compiler.components.parser.tree.Expression.ExpressionType;
 import compiler.components.parser.tree.Factor;
-import compiler.components.parser.tree.Factor.FactorType;
-import compiler.components.parser.tree.ReturnStatement;
-import compiler.components.parser.tree.Statement.StatementBuilder;
 import compiler.components.parser.tree.FuncBody;
 import compiler.components.parser.tree.FuncCall;
 import compiler.components.parser.tree.FuncDecl;
@@ -26,10 +22,13 @@ import compiler.components.parser.tree.Ident;
 import compiler.components.parser.tree.IfStatement;
 import compiler.components.parser.tree.Number;
 import compiler.components.parser.tree.Relation;
+import compiler.components.parser.tree.ReturnStatement;
 import compiler.components.parser.tree.Statement;
 import compiler.components.parser.tree.Symbol;
+import compiler.components.parser.tree.Term;
 import compiler.components.parser.tree.VarDecl;
 import compiler.components.parser.tree.WhileStatement;
+
 
 /**
  * Implementation of a top-down recursive descent parser.
@@ -211,7 +210,7 @@ public class Parser {
 		statements.add(statement());
 		while(accept(Kind.SEMI_COL)){
 			getToken();  //eat the semicolon
-			statement();
+			statements.add(statement());
 		}
 		return statements;
 	}
@@ -370,21 +369,19 @@ public class Parser {
 	 */
 	private Expression expression() throws ParsingException {
 		Expression expression = null;
-		Factor factor1 = term();
-		while(accept(Kind.PLUS) || accept(Kind.MINUS)) {
-			Symbol operation = new Symbol(currentToken.getLexeme()); 
-			getToken();
-
-			Factor factor2 = term();
-
-			if(factor1.getType().equals(FactorType.NUMBER) && factor1.getType().equals(FactorType.NUMBER)) {
-				factor1 = Factor.combineFactors(factor1, factor2, operation);
-				expression = new Expression(scanner.lineNum, scanner.charPos, ExpressionType.NUMBER);
-			}
-			else if(factor1.getType().equals(FactorType.IDENT) || factor2.getType().equals(FactorType.IDENT)) {
-				expression = new Expression(scanner.lineNum, scanner.charPos, ExpressionType.EXPRESSION);
-				expression.setExpression(factor1, factor2, operation);
-			}
+		Term term1 = term();
+		if(accept(Kind.PLUS) || accept(Kind.MINUS)) {
+			do {
+				Symbol op = new Symbol(currentToken.getLexeme()); 
+				getToken();  //eat the operator
+	
+				Term term2 = term();
+	
+                expression = Expression.builder(term1.getLineNum(), term1.getCharPos()).setTerm1(term1).setOp(op).setTerm2(term2).build();
+			}while(accept(Kind.PLUS) || accept(Kind.MINUS)); 
+		}
+		else {
+			expression = Expression.builder(term1.getLineNum(), term1.getCharPos()).setTerm1(term1).build();
 		}
 		return expression;
 	}
@@ -393,19 +390,20 @@ public class Parser {
 	 * term = factor { ('*' | '/') factor }
 	 * @throws ParsingException 
 	 */
-	private Factor term() throws ParsingException {
-		Factor factor1= factor();
-		while(accept(Kind.TIMES) || accept(Kind.DIV)) {
-			Symbol symbol = new Symbol(currentToken.getLexeme());
-			getToken();  //eat the times or div;
-
-			Factor factor2 = factor();
-
-			if(factor1.getType().equals(FactorType.NUMBER) && factor2.getType().equals(FactorType.NUMBER)) {
-				factor1 = Factor.combineFactors(factor1, factor2, symbol);
-			}
+	private Term term() throws ParsingException {
+		Factor factor1 = factor();
+		Term term = new Term(scanner.lineNum, scanner.charPos, factor1, null, null);
+		if(accept(Kind.TIMES) || accept(Kind.DIV)) {
+			do {
+				Symbol op = new Symbol(currentToken.getLexeme());  //
+				getToken();  //eat the times or div;
+	
+				Factor factor2 = factor();
+				term = new Term(scanner.lineNum, scanner.charPos, term.getFactor1(), op, factor2);
+				
+			}while(accept(Kind.TIMES) || accept(Kind.DIV));
 		}
-		return factor1;
+		return term;
 	}
 
 	/**
@@ -444,8 +442,8 @@ public class Parser {
 		else if(accept(Kind.OPN_PAREN)) {
 			Expression expression = expression();
 
-			if(expression.getType().equals(ExpressionType.NUMBER)) {
-				Number number = new Number(scanner.lineNum, scanner.charPos, expression.getValue());
+			if(expression.isNumber()) {
+				Number number = new Number(scanner.lineNum, scanner.charPos, expression.getNumberValue());
 				factor = Factor.builder(scanner.lineNum, scanner.charPos).setNumber(number).build();
 			}
 			else {
