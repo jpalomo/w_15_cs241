@@ -1,8 +1,6 @@
-package compiler.components.parser.tree;
+package compiler.components.parser.tree; 
 
-import compiler.components.parser.tree.Factor.FactorType;
-
-
+//TODO create a toString method for this class
 /**
  * term = factor { ('*' | '/') factor }
  */
@@ -13,8 +11,10 @@ public class Term extends TreeNode {
 	private int numberValue; //the value if term can be resolved to a number
 	private boolean isNumber = false;
 
-	public Term(int lineNum, int charPos, Factor factor1, Symbol op, Factor factor2) {
-		super(lineNum, charPos);
+	private String nonNumberTermString;
+
+	public Term(int lineNum, Factor factor1, Symbol op, Factor factor2) {
+		super(lineNum);
 		resolve(factor1, op, factor2);
         this.factor1 = factor1;
         this.factor2 = factor2;
@@ -40,7 +40,7 @@ public class Term extends TreeNode {
 	public boolean isNumber() {
 		return isNumber;
 	}
-	
+
 	private void resolve(Factor factor1, Symbol op, Factor factor2) {
 		if(factor2 != null) {
 			if(factor1.isNumber()) {

@@ -3,11 +3,9 @@ package compiler.components.parser.tree;
 public abstract class TreeNode {
 
 	int lineNum;
-	int charPos;
 
-	TreeNode(int lineNum, int charPos){
+	TreeNode(int lineNum){
 		this.lineNum = lineNum;
-		this.charPos = charPos;
 	}
 
 	public int getLineNum() {
@@ -17,12 +15,4 @@ public abstract class TreeNode {
 	public void setLineNum(int lineNum) {
 		this.lineNum = lineNum;
 	}
-
-	public int getCharPos() {
-		return charPos;
-	}
-
-	public void setCharPos(int charPos) {
-		this.charPos = charPos;
-	} 
 }

@@ -7,7 +7,6 @@ public class Symbol {
 		this.symbolVal = symbolVal;
 	}
 
-	@Override
 	/**
 	 * @return returns the value of the symbol
 	 */

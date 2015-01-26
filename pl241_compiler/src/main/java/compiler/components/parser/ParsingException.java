@@ -21,4 +21,9 @@ public class ParsingException extends Exception {
 				+ " but recieved " + currentToken.kind.name());
 		System.exit(1);
 	}
+
+	public ParsingException(String error) {
+		System.err.println(error);
+		LOGGER.error(error);
+	}
 }

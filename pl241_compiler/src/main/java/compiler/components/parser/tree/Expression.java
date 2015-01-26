@@ -12,8 +12,8 @@ public class Expression extends TreeNode {
 	private boolean isNumber = false;
 	private int numberValue; //the value if expression can be resolved to a number
 
-	private Expression(int lineNum, int charPos, Term term1, Symbol op, Term term2) {
-		super(lineNum, charPos);
+	private Expression(int lineNum, Term term1, Symbol op, Term term2) {
+		super(lineNum);
 		resolve(term1, op, term2);
 	}
 
@@ -47,7 +47,7 @@ public class Expression extends TreeNode {
 			}
 		}
 		else {
-			if(term1.isNumber()) {
+			if (term1.isNumber()) {
 				isNumber = true;
 				this.numberValue = term1.getNumberValue();
 			}
@@ -57,21 +57,32 @@ public class Expression extends TreeNode {
 		}
 	}
 
-	public static ExpressionBuilder builder(int lineNum, int charPos) {
-		return new ExpressionBuilder(lineNum, charPos);
+	/**
+	 * returns a string representation of the term1, op, and term2
+	 */
+	public String toString() {
+		StringBuilder sb = new StringBuilder();
+		sb.append(term1.toString());
+		sb.append(" ");
+		sb.append(op.toString());
+		sb.append(" ");
+		sb.append(term2.toString());
+		return sb.toString(); 
+	}
+
+	public static ExpressionBuilder builder(int lineNum) {
+		return new ExpressionBuilder(lineNum);
 	}
 
 	public static class ExpressionBuilder {
 		private int lineNum;
-		private int charPos;
 
 		private Term term1;
 		private Symbol op;
 		private Term term2;
 
-		private ExpressionBuilder(int lineNum, int charPos){
+		private ExpressionBuilder(int lineNum){
 			this.lineNum = lineNum;
-			this.charPos = charPos;
 		}
 
 		public ExpressionBuilder setTerm1(Term term1) {
@@ -90,7 +101,7 @@ public class Expression extends TreeNode {
 		}
 
 		public Expression build() {
-			Expression expression = new Expression(lineNum, charPos, term1, op, term2);
+			Expression expression = new Expression(lineNum, term1, op, term2);
 			return expression; 
 		}
 	}

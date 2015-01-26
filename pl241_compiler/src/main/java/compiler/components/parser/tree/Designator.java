@@ -10,8 +10,8 @@ public class Designator extends TreeNode {
 	private Ident ident;
 	private List<Expression> expression;  //can be null
 	
-	public Designator(int lineNum, int charPos, Ident identifier, List<Expression> expression) {
-		super(lineNum, charPos);
+	public Designator(int lineNum, Ident identifier, List<Expression> expression) {
+		super(lineNum);
 		this.expression = expression;
 		this.ident = identifier;
 	}
@@ -26,5 +26,17 @@ public class Designator extends TreeNode {
 
 	public Ident getIdent() {
 		return ident;
+	} 
+
+	/**
+	 * returns a string representing the identifier and expression (if array)
+	 */
+	public String toString() {
+		StringBuilder sb = new StringBuilder(ident.toString());
+
+		if(expression != null && expression.size() > 0) {
+			sb.append(expression.toString());
+		}
+		return sb.toString();
 	}
 }

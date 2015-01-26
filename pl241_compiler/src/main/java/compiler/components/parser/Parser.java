@@ -62,7 +62,7 @@ public class Parser {
 
 		List<VarDecl> varDeclList = new ArrayList<VarDecl>();
 		List<FuncDecl> funcDeclList = new ArrayList<FuncDecl>();	
-		List<Statement> statSequence = new ArrayList<Statement>();
+		List<Statement> statSequence = null;
 		
 		while (currentToken.kind != Kind.EOF && currentToken.kind != Kind.ERROR && currentToken.kind != Kind.PERIOD) {
 			if(accept(Kind.VAR) || accept(Kind.ARRAY)) {  //first set of var decl
@@ -77,8 +77,7 @@ public class Parser {
 	
 			else if (accept(Kind.BEGIN)) {
 				getToken();  //eat the open brace
-				List<Statement> statements = statSequence();
-				statSequence.addAll(statements); //TODO might be able to remove this and just add return the list to statsequece list obj
+				statSequence = statSequence();
 				expect(Kind.END);
 			}
 			else {
@@ -86,7 +85,7 @@ public class Parser {
 			}
 		} 
 		expect(Kind.PERIOD);
-		Computation computation = new Computation(scanner.lineNum, scanner.charPos, varDeclList, funcDeclList, statSequence);
+		Computation computation = new Computation(getLineNum(), varDeclList, funcDeclList, statSequence);
 		return computation;  
 	}
 	
@@ -95,21 +94,22 @@ public class Parser {
 	 * @throws ParsingException 
 	 */
 	private List<VarDecl> varDecl() throws ParsingException {
-		List<VarDecl> symbols = new ArrayList<VarDecl>();
+		List<VarDecl> varDecls = new ArrayList<VarDecl>();
 
 		typeDecl();  //TODO dont need the type at this point for the parse tree
 
 		Ident ident = ident();
-		symbols.add(new VarDecl(scanner.lineNum, scanner.charPos, ident));
+		VarDecl varDecl = new VarDecl(getLineNum(), ident);
 
+		varDecls.add(varDecl); 
 		while(accept(Kind.COMMA)) {
 			getToken(); // eat the comma
 			ident = ident();
-			symbols.add(new VarDecl(scanner.lineNum, scanner.charPos, ident));
+			varDecls.add(new VarDecl(getLineNum(), ident));
 		} 
 		expect(Kind.SEMI_COL);
 		
-		return symbols;
+		return varDecls;
 	}
 
 	/**
@@ -131,7 +131,7 @@ public class Parser {
 
 		expect(Kind.SEMI_COL);
 
-		FuncDecl funcDecl = new FuncDecl(scanner.lineNum, scanner.charPos, funcName, formalParams, funcBody);
+		FuncDecl funcDecl = new FuncDecl(getLineNum(), funcName, formalParams, funcBody);
 		return funcDecl;
 	}
 
@@ -174,7 +174,7 @@ public class Parser {
 
 		expect(Kind.END); 
 		
-		FuncBody funcBody = new FuncBody(scanner.lineNum, scanner.charPos, varDecls, statements);
+		FuncBody funcBody = new FuncBody(getLineNum(), varDecls, statements);
 		return funcBody;
 		 
 	}
@@ -223,22 +223,22 @@ public class Parser {
 		Statement statement = null;
 		if(accept(Kind.LET)) {
 			Assignment assignment = assignment();
-			statement = Statement.builder(assignment.getLineNum(), assignment.getCharPos()).setAssignment(assignment).build();
+			statement = Statement.builder(getLineNum()).setAssignment(assignment).build();
 		}
 		else if (accept(Kind.CALL)) {
 			funcCall();
 		}
 		else if(accept(Kind.IF)) {
 			IfStatement ifStatement = ifStatement();
-			statement = Statement.builder(ifStatement.getLineNum(), ifStatement.getCharPos()).setIfStatement(ifStatement).build();
+			statement = Statement.builder(getLineNum()).setIfStatement(ifStatement).build();
 		}
 		else if(accept(Kind.WHILE)) {
 			WhileStatement whileStatement = whileStatement();
-			statement = Statement.builder(whileStatement.getLineNum(), whileStatement.getCharPos()).setWhileStatement(whileStatement).build();
+			statement = Statement.builder(getLineNum()).setWhileStatement(whileStatement).build();
 		}
 		else if(accept(Kind.RETURN)) {
 			ReturnStatement returnStatement = returnStatement();
-			statement = Statement.builder(returnStatement.getLineNum(), returnStatement.getCharPos()).setReturnStatement(returnStatement).build();
+			statement = Statement.builder(getLineNum()).setReturnStatement(returnStatement).build();
 		}
 		return statement;
 	}
@@ -256,7 +256,7 @@ public class Parser {
 
 		Expression expression = expression();
 
-		Assignment assignment = new Assignment(scanner.lineNum, scanner.charPos, designator, expression);
+		Assignment assignment = new Assignment(getLineNum(), designator, expression);
 		return assignment; 
 	}
 
@@ -282,7 +282,7 @@ public class Parser {
 			expect(Kind.CLS_PAREN);
 		}
 
-		FuncCall funcCall = new FuncCall(scanner.lineNum, scanner.charPos, funcIdent, expressions);
+		FuncCall funcCall = new FuncCall(getLineNum(), funcIdent, expressions);
 		return funcCall;
 	}
 
@@ -307,7 +307,7 @@ public class Parser {
 		
 		expect(Kind.FI);
 
-		ifStat = new IfStatement(scanner.lineNum, scanner.charPos, relation, ifBody, elseBody);
+		ifStat = new IfStatement(getLineNum(), relation, ifBody, elseBody);
 		return ifStat;
 	}
 
@@ -322,7 +322,7 @@ public class Parser {
 		List<Statement> statSequence = statSequence();
 		expect(Kind.OD);
 
-		WhileStatement whileStatement = new WhileStatement(scanner.lineNum, scanner.charPos, relation, statSequence);
+		WhileStatement whileStatement = new WhileStatement(getLineNum(), relation, statSequence);
 		return whileStatement;
 	}
 
@@ -342,7 +342,7 @@ public class Parser {
 			expression = expression();
 		}
 
-		ReturnStatement returnStatement = new ReturnStatement(scanner.lineNum, scanner.charPos, expression);
+		ReturnStatement returnStatement = new ReturnStatement(getLineNum(), expression);
 		return returnStatement;
 	}
 	
@@ -351,7 +351,7 @@ public class Parser {
 	 * @throws ParsingException 
 	 */
 	private Designator designator() throws ParsingException {
-		Ident ident = ident(); //TODO call identifier, dont just eat it???
+		Ident ident = ident();
 		List<Expression> arrayExpr = new ArrayList<Expression>();
 		while(accept(Kind.OPN_BRACK)) {
 			getToken(); //eat the open bracket
@@ -359,7 +359,7 @@ public class Parser {
 			expect(Kind.CLS_BRACK);
 		}
 
-		Designator designator = new Designator(scanner.lineNum, scanner.charPos, ident, arrayExpr);
+		Designator designator = new Designator(getLineNum(), ident, arrayExpr);
 		return designator;
 	}
 
@@ -377,11 +377,11 @@ public class Parser {
 	
 				Term term2 = term();
 	
-                expression = Expression.builder(term1.getLineNum(), term1.getCharPos()).setTerm1(term1).setOp(op).setTerm2(term2).build();
+                expression = Expression.builder(getLineNum()).setTerm1(term1).setOp(op).setTerm2(term2).build();
 			}while(accept(Kind.PLUS) || accept(Kind.MINUS)); 
 		}
 		else {
-			expression = Expression.builder(term1.getLineNum(), term1.getCharPos()).setTerm1(term1).build();
+			expression = Expression.builder(getLineNum()).setTerm1(term1).build();
 		}
 		return expression;
 	}
@@ -392,14 +392,14 @@ public class Parser {
 	 */
 	private Term term() throws ParsingException {
 		Factor factor1 = factor();
-		Term term = new Term(scanner.lineNum, scanner.charPos, factor1, null, null);
+		Term term = new Term(getLineNum(), factor1, null, null);
 		if(accept(Kind.TIMES) || accept(Kind.DIV)) {
 			do {
 				Symbol op = new Symbol(currentToken.getLexeme());  //
 				getToken();  //eat the times or div;
 	
 				Factor factor2 = factor();
-				term = new Term(scanner.lineNum, scanner.charPos, term.getFactor1(), op, factor2);
+				term = new Term(getLineNum(), term.getFactor1(), op, factor2);
 				
 			}while(accept(Kind.TIMES) || accept(Kind.DIV));
 		}
@@ -419,7 +419,7 @@ public class Parser {
 
 		Expression rightExpr = expression();
 
-		Relation relation = new Relation(scanner.lineNum, scanner.charPos, relOp, leftExpr, rightExpr);
+		Relation relation = new Relation(getLineNum(), relOp, leftExpr, rightExpr);
 
 		return relation;
 	}
@@ -433,26 +433,26 @@ public class Parser {
 
 		if(accept(Kind.IDENTIFIER)) {
 			Designator designator = designator();
-			factor = Factor.builder(scanner.lineNum, scanner.charPos).setDesignator(designator).build();
+			factor = Factor.builder(getLineNum()).setDesignator(designator).build();
 		}
 		else if(accept(Kind.NUMBER)) {
 			Number number = number();
-			factor = Factor.builder(scanner.lineNum, scanner.charPos).setNumber(number).build();
+			factor = Factor.builder(getLineNum()).setNumber(number).build();
 		}
 		else if(accept(Kind.OPN_PAREN)) {
 			Expression expression = expression();
 
 			if(expression.isNumber()) {
-				Number number = new Number(scanner.lineNum, scanner.charPos, expression.getNumberValue());
-				factor = Factor.builder(scanner.lineNum, scanner.charPos).setNumber(number).build();
+				Number number = new Number(getLineNum(), expression.getNumberValue());
+				factor = Factor.builder(getLineNum()).setNumber(number).build();
 			}
 			else {
-				factor = Factor.builder(scanner.lineNum, scanner.charPos).setExpression(expression).build();
+				factor = Factor.builder(getLineNum()).setExpression(expression).build();
 			}
 		}
 		else if(accept(Kind.CALL)) {
 			FuncCall funcCall = funcCall();
-			factor = Factor.builder(scanner.lineNum, scanner.charPos).setFuncCall(funcCall).build();
+			factor = Factor.builder(getLineNum()).setFuncCall(funcCall).build();
         }
 		else {
 			throw new ParsingException();
@@ -467,7 +467,7 @@ public class Parser {
 	private Ident ident() {
 		System.out.println("Identifier found: " + currentToken.getLexeme());
 		Symbol symbol = new Symbol(currentToken.getLexeme());
-		Ident ident = new Ident(scanner.lineNum, scanner.charPos, symbol);
+		Ident ident = new Ident(getLineNum(), symbol);
 		getToken();
 		return ident;
 	}
@@ -477,7 +477,7 @@ public class Parser {
 	 */
 	private Number number() {
 		System.out.println("Number found: " + currentToken.getLexeme());
-		Number number = new Number(scanner.lineNum, scanner.charPos, Integer.valueOf(currentToken.getLexeme()));
+		Number number = new Number(getLineNum(), Integer.valueOf(currentToken.getLexeme()));
 		getToken();
 		return number;
 	}
@@ -514,4 +514,8 @@ public class Parser {
 	public Computation getComputationNode() {
 		return computationNode;
 	} 
+
+	public int getLineNum() {
+		return scanner.lineNum;
+	}
 }

@@ -7,12 +7,20 @@ public class VarDecl extends TreeNode {
 
 	private Ident ident;
 
-	public VarDecl(int lineNum, int charPos, Ident ident) {
-		super(lineNum, charPos); 
+	public VarDecl(int lineNum, Ident ident) {
+		super(lineNum); 
 		this.ident = ident;
 	}
 
 	public Ident getIdent() {
 		return ident;
 	} 
+
+	@Override
+	/**
+	 * returns the value of Ident as a string
+	 */
+	public String toString() {
+		return ident.toString();
+	}
 }

@@ -11,8 +11,8 @@ public class Computation extends TreeNode {
 	private List<VarDecl> varDecls;
 	private List<FuncDecl> funcDecls;
 
-	public Computation(int lineNum, int charPos, List<VarDecl> varDecls, List<FuncDecl> funcDecls, List<Statement> statSequence) {
-		super(lineNum, charPos);
+	public Computation(int lineNum, List<VarDecl> varDecls, List<FuncDecl> funcDecls, List<Statement> statSequence) {
+		super(lineNum);
 		this.varDecls = varDecls;
 		this.funcDecls = funcDecls;
 		this.statSequence = statSequence; 
