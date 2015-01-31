@@ -56,9 +56,9 @@ public class TestNodes {
 		Parser parser = new Parser("src/test/resources/test001.txt"); 
 		List<Statement> statSeq = parser.parse().getComputationNode().getStatSequence();
 		assertThat(statSeq.size()).isEqualTo(3);
-		assertThat(statSeq.get(0).getAssignment().getDesignator().getIdent().getIdentAsString()).isEqualTo("x");
+		assertThat(statSeq.get(0).getAssignment().getDesignator().getIdent().toString()).isEqualTo("x");
 		assertThat(statSeq.get(0).getAssignment().getExpression().getTerm1().getFactor1().getNumberValue()).isEqualTo(51);
-		assertThat(statSeq.get(1).getAssignment().getDesignator().getIdent().getIdentAsString()).isEqualTo("y");
+		assertThat(statSeq.get(1).getAssignment().getDesignator().getIdent().toString()).isEqualTo("y");
 		assertThat(statSeq.get(1).getAssignment().getExpression().getTerm1().getFactor1().getNumberValue()).isEqualTo(2);
 		assertThat(statSeq.get(1).getAssignment().getExpression().getTerm1().getOp().toString()).isEqualTo("*");
 		assertThat(statSeq.get(1).getAssignment().getExpression().getTerm1().getFactor2().getDesignator().getIdent().toString()).isEqualTo("x");
@@ -72,7 +72,7 @@ public class TestNodes {
 		Parser parser = new Parser("src/test/resources/unit_tests/tree_test001.txt"); 
 		List<Statement> statSeq = parser.parse().getComputationNode().getStatSequence();
 		assertThat(statSeq.size()).isEqualTo(1);
-		assertThat(statSeq.get(0).getAssignment().getDesignator().getIdent().getIdentAsString()).isEqualTo("y");
+		assertThat(statSeq.get(0).getAssignment().getDesignator().getIdent().toString()).isEqualTo("y");
 		assertThat(statSeq.get(0).getAssignment().getExpression().getTerm1().getFactor1().getNumberValue()).isEqualTo(2);
 		assertThat(statSeq.get(0).getAssignment().getExpression().getTerm1().getOp().toString()).isEqualTo("*");
 		assertThat(statSeq.get(0).getAssignment().getExpression().getTerm1().getFactor2().getDesignator().getIdent().toString()).isEqualTo("x");

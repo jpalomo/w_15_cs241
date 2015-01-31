@@ -9,10 +9,6 @@ public class Ident extends TreeNode {
 		this.symbol = symbol;
 	}
 	
-	public String getIdentAsString() {
-		return symbol.toString();
-	} 
-
 	public Symbol getSymbol() {
 		return symbol;
 	}
