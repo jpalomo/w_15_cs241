@@ -1,8 +1,11 @@
 package compiler.components.parser;
 
 import static compiler.components.parser.ParserUtils.combineArithmetic;
+import static compiler.components.parser.ParserUtils.emitAssignmentInstruction;
 import static compiler.components.parser.ParserUtils.combineRelation;
-import static compiler.components.parser.ParserUtils.*;
+import static compiler.components.parser.ParserUtils.conditionalJumpForward;
+import static compiler.components.parser.ParserUtils.createUnconditionBranch;
+import static compiler.components.parser.ParserUtils.updateSymbols;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,20 +15,19 @@ import org.slf4j.LoggerFactory;
 
 import compiler.components.intermeditate_rep.BasicBlock;
 import compiler.components.intermeditate_rep.Instruction;
+import compiler.components.intermeditate_rep.Instruction.InstructionBuilder;
 import compiler.components.lex.Scanner;
 import compiler.components.lex.Token;
 import compiler.components.lex.Token.Kind;
 import compiler.components.parser.Result.ResultEnum;
 import compiler.components.parser.tree.Expression;
 import compiler.components.parser.tree.FuncBody;
-import compiler.components.parser.tree.FuncCall;
 import compiler.components.parser.tree.FuncDecl;
 import compiler.components.parser.tree.Ident;
 import compiler.components.parser.tree.ReturnStatement;
 import compiler.components.parser.tree.Statement;
 import compiler.components.parser.tree.VarDecl;
 import compiler.components.parser.tree.WhileStatement;
-
 
 /**
  * Implementation of a top-down recursive descent parser.
@@ -34,14 +36,19 @@ import compiler.components.parser.tree.WhileStatement;
  */
 public class ParserForVCG {
 	static Logger LOGGER = LoggerFactory.getLogger(ParserForVCG.class);
-	
+
+	Map<Integer, Instruction> programInstructions;
+	public String fileName;
 	public Token currentToken;
-	private Scanner scanner;
-	private BasicBlock beginBlock;  //hold a reference to the beinning of the program
+	public BasicBlock beginBlock;  //hold a reference to the beinning of the program
 	private BasicBlock currentBB;
+	private Scanner scanner;
 
 	public ParserForVCG(String fileName) {
+		this.fileName = fileName;
 		scanner = new Scanner(fileName);
+
+		
 	}
 
 	public ParserForVCG parse() throws ParsingException {
@@ -50,7 +57,6 @@ public class ParserForVCG {
 		return this;
 	}
 
-
 	/**
 	 * computation = 'main' {varDecl} {funcDecl} '{' statSequence '}' '.' 
 	 * @throws ParsingException 
@@ -58,34 +64,25 @@ public class ParserForVCG {
 	private void computation() throws ParsingException {
 		expect(Kind.MAIN);
 
-		List<FuncDecl> funcDeclList = new ArrayList<FuncDecl>();	
-		List<Statement> statSequence = null;
-		
 		while (currentToken.kind != Kind.EOF && currentToken.kind != Kind.ERROR && currentToken.kind != Kind.PERIOD) {
 			if(accept(Kind.VAR) || accept(Kind.ARRAY)) {  //first set of var decl
 				varDecl();
 			}
-	/*			
 			else if(accept(Kind.FUNCTION) || accept(Kind.PROCEDURE)){
-				FuncDecl funcDecl = funcDecl();
-				funcDeclList.add(funcDecl);
-			}*/
-	
-			if (accept(Kind.BEGIN)) {
+				funcDecl();  //TODO add to symbole table?
+			}
+			else if (accept(Kind.BEGIN)) {
 				getToken();  //eat the open brace
 				currentBB = new BasicBlock();
 				beginBlock = currentBB;
 				statSequence();
 				expect(Kind.END);
-
 			}
 			else {
 				throw new ParsingException();
 			}
 		} 
 		expect(Kind.PERIOD);
-		ParserUtils.writeOutBlocks(beginBlock);
-        ParserUtils.end();
 		return;  
 	}
 	
@@ -207,7 +204,7 @@ public class ParserForVCG {
 		Result x = statement();
 		while(accept(Kind.SEMI_COL)){
 			getToken();  //eat the semicolon
-			statement();
+			x = statement();
 		}
 
 		return x;
@@ -226,6 +223,7 @@ public class ParserForVCG {
 			funcCall();
 		}
 		else if(accept(Kind.IF)) {
+			BasicBlock before = currentBB;
 			result = ifStatement();
 		}
 		else if(accept(Kind.WHILE)) {
@@ -257,7 +255,7 @@ public class ParserForVCG {
 		Result y = expression();
 
 		updateSymbols(x.varValue);  //once we write we update the instruction number, update symbols before writing
-		x = ParserUtils.emitAssignmentInstruction(x, y, currentBB);
+		x = emitAssignmentInstruction(x, y, currentBB);
 		return x; 
 	}
 
@@ -265,26 +263,27 @@ public class ParserForVCG {
 	 * funcCall = 'call' ident [ '(' [expression { ',' expression } ] ')' ]
 	 * @throws ParsingException 
 	 */
-	private FuncCall funcCall() throws ParsingException {
+	private Result funcCall() throws ParsingException {
 		expect(Kind.CALL);
-		Ident funcIdent = null;
-		List<Expression> expressions = new ArrayList<Expression>();
-		
-//		if(accept(Kind.OPN_PAREN)) {
-//			getToken();  //eat the open paren
-//			Expression expression = expression();
-//			expressions.add(expression);
-//
-//			while(accept(Kind.COMMA)) {
-//				getToken(); //eat the comma
-//				expression = expression();
-//				expressions.add(expression);
-//			}
-//			expect(Kind.CLS_PAREN);
-//		}
 
-		FuncCall funcCall = new FuncCall(getLineNum(), funcIdent, expressions);
-		return funcCall;
+		Result result = ident();
+	
+        InstructionBuilder iBuilder = Instruction.builder(ParserUtils.getNewInstCount());
+        iBuilder.operator(result.varValue);
+		if(accept(Kind.OPN_PAREN)) {
+			getToken();  //eat the open paren
+			Result expression = expression();
+
+			while(accept(Kind.COMMA)) {
+				getToken(); //eat the comma
+				expression = expression();
+			}
+			iBuilder.op1(expression.varValue);
+			expect(Kind.CLS_PAREN);
+		}
+        currentBB.addInstruction(iBuilder.buildFunctionCall()); 
+
+		return result;
 	}
 
 	/**
@@ -294,31 +293,42 @@ public class ParserForVCG {
 	private Result ifStatement() throws ParsingException {
 		expect(Kind.IF);
 		
+		BasicBlock before = currentBB;
 		BasicBlock condBB = createBBWithDomInfo(currentBB, true);  //create the condition Block
-		BasicBlock joinBlock = createBBWithDomInfo(condBB, false); //create join block pointer
+		addControlFlow(before, condBB);
 		Result relation = relation();  //might have fixups
-		conditionalJumpForward(condBB, joinBlock.blockNumber.toString());
 
 		expect(Kind.THEN);
 
 		BasicBlock ifBodyBB = createBBWithDomInfo(condBB, true);
+		addControlFlow(condBB, ifBodyBB);
+
 		Result ifBody = statSequence();  //returns the first result
 
-		Result elseBody = null;
+		BasicBlock joinBlock = null; 
 		BasicBlock elseBodyBB = null;
 		if(accept(Kind.ELSE)) {
+			joinBlock = createBBWithDomInfo(condBB, false); //create join block pointer, only create if you have an else
+			addControlFlow(ifBodyBB, joinBlock);
 			getToken(); //eat the else
 			elseBodyBB = createBBWithDomInfo(condBB, true);
-			elseBody = statSequence();
+			addControlFlow(condBB, elseBodyBB);
+			addControlFlow(elseBodyBB, joinBlock);
+			Result elseBody = statSequence();
 		}
 
 		if(elseBodyBB != null) {
-			ParserUtils.createUnconditionBranch(ifBodyBB, String.valueOf(ParserUtils.count + 1));  //jump to following block
+			conditionalJumpForward(condBB, elseBodyBB.blockNumber.toString()); 
+			createUnconditionBranch(ifBodyBB, joinBlock.blockNumber.toString());  //jump to following block
+			currentBB = joinBlock;
+		}
+		else {
+			//dont need to branch from if body, just fall through, condition will branch here
+			conditionalJumpForward(condBB, String.valueOf(ParserUtils.blockCount + 1)); 
 		}
 
 		expect(Kind.FI);
 
-		currentBB = joinBlock;
 		
 		return relation;
 	}
@@ -539,6 +549,10 @@ public class ParserForVCG {
 			currentBB = bb;
 		}
 		return bb; 
+	}
+
+	public void addControlFlow(BasicBlock from, BasicBlock to){
+		from.addControlFlow(to);
 	}
 
 	public void addDomInfo(BasicBlock dominator, BasicBlock dominatee){

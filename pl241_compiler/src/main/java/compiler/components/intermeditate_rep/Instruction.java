@@ -51,7 +51,12 @@ public class Instruction {
 
 		public Instruction buildFixUpInstruction() {
 			Preconditions.checkNotNull(operator, "operator must not be null");
-			return new Instruction(instructionNum, operator, "", "");
+			return new Instruction(instructionNum, operator, operand1, "");
+		}
+
+		public Instruction buildFunctionCall() {
+			Preconditions.checkNotNull(operator, "function name must not be null");
+			return buildFixUpInstruction();
 		}
 
 		public Instruction build() {

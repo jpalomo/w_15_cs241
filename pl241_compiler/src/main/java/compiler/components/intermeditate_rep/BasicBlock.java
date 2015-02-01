@@ -16,7 +16,8 @@ public class BasicBlock {
 		instructions = new LinkedList<Instruction>();
 		dominatees = new LinkedList<BasicBlock>();
 		dominators = new LinkedList<BasicBlock>();
-		blockNumber = ParserUtils.getNewNumber();
+		controlFlow = new LinkedList<BasicBlock>();
+		blockNumber = ParserUtils.getNewBlockNumber();
 	}
 
 	/**
@@ -43,6 +44,10 @@ public class BasicBlock {
 		dominatees.add(dominatee);
 	}
 
+	public void addControlFlow(BasicBlock to){
+		controlFlow.add(to);
+	}
+
 	public List<Instruction> getInstructions() {
 		return instructions;
 	}
@@ -53,5 +58,9 @@ public class BasicBlock {
 
 	public List<BasicBlock> getDominators() {
 		return dominators;
+	}
+
+	public List<BasicBlock> getControlFlow() {
+		return controlFlow;
 	}
 }
