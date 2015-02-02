@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.HashSet;
+import java.util.Map;
 
 /**
  * Each method is responsible for creating a new line.
@@ -14,11 +15,13 @@ import java.util.HashSet;
 public class VCGWriter {
 	private PrintWriter writer;
 	private HashSet<Integer> printedNodes;
+	private Map<Integer, Instruction> programInstructions;
 
-	public VCGWriter(String fileName) {
+	public VCGWriter(String fileName, Map<Integer, Instruction> programInstructions) {
 		try {
 			writer = new PrintWriter(new File(fileName));
 			printedNodes = new HashSet<Integer>();
+			this.programInstructions = programInstructions;
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -30,6 +33,7 @@ public class VCGWriter {
 
 	public void emitBeginBasicBlock(BasicBlock bb, boolean dominators,
 			boolean controlFlows) {
+		
 		//in control flow graphs multiple blocks may converge to a single block, when this happens, we dont want to duplicate the node
 		if (!printedNodes.contains(bb.blockNumber)) {
 			writer.println();
@@ -75,9 +79,9 @@ public class VCGWriter {
 	}
 
 	private void writeBBInstructions(BasicBlock bb) {
-		for (Instruction inst : bb.getInstructions()) {
+		for (Integer instNum : bb.getInstructions()) {
 			writer.println();
-			writer.print(inst.toString());
+			writer.print(programInstructions.get(instNum).toString());
 		}
 		writer.write("\n]\"");
 	}

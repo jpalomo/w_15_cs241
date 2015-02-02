@@ -2,18 +2,19 @@ package compiler.components.intermeditate_rep;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import compiler.components.parser.ParserUtils;
 
 public class BasicBlock {
-	private List<Instruction> instructions;
+	private List<Integer> instructions;
 	private List<BasicBlock> dominatees;
 	private List<BasicBlock> dominators;
 	private List<BasicBlock> controlFlow;
 	public Integer blockNumber;
 	
 	public BasicBlock() {
-		instructions = new LinkedList<Instruction>();
+		instructions = new LinkedList<Integer>();
 		dominatees = new LinkedList<BasicBlock>();
 		dominators = new LinkedList<BasicBlock>();
 		controlFlow = new LinkedList<BasicBlock>();
@@ -24,8 +25,16 @@ public class BasicBlock {
 	 * Adds an instruction to the list in sequential order
 	 * @param instruction
 	 */
-	public void addInstruction(Instruction instruction) {
-		instructions.add(instruction);
+//	public void addInstruction(Instruction instruction) {
+//		instructions.add(instruction);
+//	}
+
+	/**
+	 * Adds an instruction to the list in sequential order
+	 * @param instruction
+	 */
+	public void addInstruction(Integer instructionNumber) {
+		instructions.add(instructionNumber);
 	}
 
 	/**
@@ -48,7 +57,7 @@ public class BasicBlock {
 		controlFlow.add(to);
 	}
 
-	public List<Instruction> getInstructions() {
+	public List<Integer> getInstructions() {
 		return instructions;
 	}
 
@@ -62,5 +71,41 @@ public class BasicBlock {
 
 	public List<BasicBlock> getControlFlow() {
 		return controlFlow;
+	}
+
+	/**
+	 * Prints the instructions  
+	 * @param programInstructions
+	 * @return
+	 */
+	public String toString(Map<Integer, Instruction> programInstructions) {
+		StringBuilder sb = new StringBuilder();
+		sb.append("BlockNo: " + blockNumber);
+		String s; 
+
+		sb.append("Instructions:");
+		for(Integer instNum: instructions) {
+			s = String.format("\n\t%d\t%s", instNum, programInstructions.get(instNum).toString());
+			sb.append(s);
+		}
+
+		sb.append("Controls:");
+		for(BasicBlock bb: controlFlow) {
+			s = String.format("\n\t%d", bb.blockNumber);
+			sb.append(s);
+		}
+
+		return sb.toString();
+	}
+
+	public String toString(){
+		return blockNumber.toString();
+	}
+
+	public boolean isEmpty() {
+		if(instructions.size() == 0 && dominators.size() == 0) {
+			return true;
+		}
+		return false;
 	}
 }

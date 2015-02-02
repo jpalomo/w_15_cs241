@@ -5,7 +5,7 @@ import java.util.List;
 
 import org.junit.Test;
 
-import compiler.components.parser.Parser;
+import compiler.components.parser.OldParser;
 import compiler.components.parser.ParsingException;
 import compiler.components.parser.tree.Computation;
 import compiler.components.parser.tree.FuncDecl;
@@ -16,14 +16,14 @@ public class TestNodes {
 
 	@Test
 	public void testComputationNotNull() throws ParsingException {
-		Parser parser = new Parser("src/test/resources/test001.txt"); 
+		OldParser parser = new OldParser("src/test/resources/test001.txt"); 
 		Computation computation = parser.parse().getComputationNode();
 		assertThat(computation).isNotNull();
 	}
 
 	@Test
 	public void testComputationFieldsAreNotNull() throws ParsingException {
-		Parser parser = new Parser("src/test/resources/test001.txt"); 
+		OldParser parser = new OldParser("src/test/resources/test001.txt"); 
 		Computation computation = parser.parse().getComputationNode();
 		assertThat(computation.getFuncDecl()).isNotNull();
 		assertThat(computation.getVarDecl()).isNotNull();
@@ -32,7 +32,7 @@ public class TestNodes {
 
 	@Test
 	public void testVarDecls001() throws ParsingException {
-		Parser parser = new Parser("src/test/resources/test001.txt"); 
+		OldParser parser = new OldParser("src/test/resources/test001.txt"); 
 		List<VarDecl> varDecls= parser.parse().getComputationNode().getVarDecl();
 		assertThat(varDecls.size()).isEqualTo(2);
 		assertThat(varDecls.get(0).getIdent().getSymbol().toString()).isEqualTo("x");
@@ -41,7 +41,7 @@ public class TestNodes {
 
 	@Test
 	public void testFuncDecls001() throws ParsingException {
-		Parser parser = new Parser("src/test/resources/test001.txt"); 
+		OldParser parser = new OldParser("src/test/resources/test001.txt"); 
 		List<FuncDecl> funcDecls = parser.parse().getComputationNode().getFuncDecl();
 		assertThat(funcDecls.size()).isEqualTo(0);
 	}
@@ -53,7 +53,7 @@ public class TestNodes {
 	 */
 	@Test
 	public void testStatSequence001() throws ParsingException {
-		Parser parser = new Parser("src/test/resources/test001.txt"); 
+		OldParser parser = new OldParser("src/test/resources/test001.txt"); 
 		List<Statement> statSeq = parser.parse().getComputationNode().getStatSequence();
 		assertThat(statSeq.size()).isEqualTo(3);
 		assertThat(statSeq.get(0).getAssignment().getDesignator().getIdent().toString()).isEqualTo("x");
@@ -69,7 +69,7 @@ public class TestNodes {
 	 */
 	@Test
 	public void testTreeTest001() throws ParsingException {
-		Parser parser = new Parser("src/test/resources/unit_tests/tree_test001.txt"); 
+		OldParser parser = new OldParser("src/test/resources/unit_tests/tree_test001.txt"); 
 		List<Statement> statSeq = parser.parse().getComputationNode().getStatSequence();
 		assertThat(statSeq.size()).isEqualTo(1);
 		assertThat(statSeq.get(0).getAssignment().getDesignator().getIdent().toString()).isEqualTo("y");

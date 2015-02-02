@@ -1,11 +1,5 @@
 package compiler.components.parser;
 
-import static compiler.components.parser.ParserUtils.combineArithmetic;
-import static compiler.components.parser.ParserUtils.emitAssignmentInstruction;
-import static compiler.components.parser.ParserUtils.combineRelation;
-import static compiler.components.parser.ParserUtils.conditionalJumpForward;
-import static compiler.components.parser.ParserUtils.createUnconditionBranch;
-import static compiler.components.parser.ParserUtils.updateSymbols;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,47 +7,49 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import compiler.components.intermeditate_rep.BasicBlock;
-import compiler.components.intermeditate_rep.Instruction;
-import compiler.components.intermeditate_rep.Instruction.InstructionBuilder;
 import compiler.components.lex.Scanner;
 import compiler.components.lex.Token;
 import compiler.components.lex.Token.Kind;
-import compiler.components.parser.Result.ResultEnum;
+import compiler.components.parser.tree.Assignment;
+import compiler.components.parser.tree.Computation;
+import compiler.components.parser.tree.Designator;
 import compiler.components.parser.tree.Expression;
+import compiler.components.parser.tree.Factor;
 import compiler.components.parser.tree.FuncBody;
+import compiler.components.parser.tree.FuncCall;
 import compiler.components.parser.tree.FuncDecl;
 import compiler.components.parser.tree.Ident;
+import compiler.components.parser.tree.IfStatement;
+import compiler.components.parser.tree.Number;
+import compiler.components.parser.tree.Relation;
 import compiler.components.parser.tree.ReturnStatement;
 import compiler.components.parser.tree.Statement;
+import compiler.components.parser.tree.Symbol;
+import compiler.components.parser.tree.Term;
 import compiler.components.parser.tree.VarDecl;
 import compiler.components.parser.tree.WhileStatement;
+
 
 /**
  * Implementation of a top-down recursive descent parser.
  *
  * @author John Palomo, 60206611
  */
-public class ParserForVCG {
-	static Logger LOGGER = LoggerFactory.getLogger(ParserForVCG.class);
+public class OldParser {
 
-	Map<Integer, Instruction> programInstructions;
-	public String fileName;
-	public Token currentToken;
-	public BasicBlock beginBlock;  //hold a reference to the beinning of the program
-	private BasicBlock currentBB;
 	private Scanner scanner;
+	public Token currentToken;
+	private Computation computationNode;
 
-	public ParserForVCG(String fileName) {
-		this.fileName = fileName;
+	static Logger LOGGER = LoggerFactory.getLogger(OldParser.class);
+
+	public OldParser(String fileName) {
 		scanner = new Scanner(fileName);
-
-		
 	}
 
-	public ParserForVCG parse() throws ParsingException {
+	public OldParser parse() throws ParsingException {
 		getToken(); //get the first token
-		computation();
+		computationNode = computation();
 		return this;
 	}
 
@@ -61,21 +57,27 @@ public class ParserForVCG {
 	 * computation = 'main' {varDecl} {funcDecl} '{' statSequence '}' '.' 
 	 * @throws ParsingException 
 	 */
-	private void computation() throws ParsingException {
+	private Computation computation() throws ParsingException {
 		expect(Kind.MAIN);
 
+		List<VarDecl> varDeclList = new ArrayList<VarDecl>();
+		List<FuncDecl> funcDeclList = new ArrayList<FuncDecl>();	
+		List<Statement> statSequence = null;
+		
 		while (currentToken.kind != Kind.EOF && currentToken.kind != Kind.ERROR && currentToken.kind != Kind.PERIOD) {
 			if(accept(Kind.VAR) || accept(Kind.ARRAY)) {  //first set of var decl
-				varDecl();
+				List<VarDecl> varSymbols = varDecl();
+				varDeclList.addAll(varSymbols);
 			}
+	
 			else if(accept(Kind.FUNCTION) || accept(Kind.PROCEDURE)){
-				funcDecl();  //TODO add to symbole table?
+				FuncDecl funcDecl = funcDecl();
+				funcDeclList.add(funcDecl);
 			}
+	
 			else if (accept(Kind.BEGIN)) {
 				getToken();  //eat the open brace
-				currentBB = new BasicBlock();
-				beginBlock = currentBB;
-				statSequence();
+				statSequence = statSequence();
 				expect(Kind.END);
 			}
 			else {
@@ -83,7 +85,8 @@ public class ParserForVCG {
 			}
 		} 
 		expect(Kind.PERIOD);
-		return;  
+		Computation computation = new Computation(getLineNum(), varDeclList, funcDeclList, statSequence);
+		return computation;  
 	}
 	
 	/**
@@ -95,15 +98,17 @@ public class ParserForVCG {
 
 		typeDecl();  //TODO dont need the type at this point for the parse tree
 
-		Result ident = ident();
-		ParserUtils.addSymbol(ident.varValue);
+		Ident ident = ident();
+		VarDecl varDecl = new VarDecl(getLineNum(), ident);
 
+		varDecls.add(varDecl); 
 		while(accept(Kind.COMMA)) {
 			getToken(); // eat the comma
 			ident = ident();
-			ParserUtils.addSymbol(ident.varValue);
+			varDecls.add(new VarDecl(getLineNum(), ident));
 		} 
 		expect(Kind.SEMI_COL);
+		
 		return varDecls;
 	}
 
@@ -114,7 +119,7 @@ public class ParserForVCG {
 	private FuncDecl funcDecl() throws ParsingException {
 		getToken();  //eat function or procedure token
 
-		Ident funcName = null;
+		Ident funcName = ident();
 
 		List<Ident> formalParams = null;
 		if(accept(Kind.OPN_PAREN)) {
@@ -139,10 +144,10 @@ public class ParserForVCG {
 		
 		List<Ident> params = new ArrayList<Ident>();
 		if(accept(Kind.IDENTIFIER)) {
-			//params.add(ident());
+			params.add(ident());
 			while(accept(Kind.COMMA)) {
 				getToken();  //eat the comma
-			//	params.add(ident());
+				params.add(ident());
 			}
 		} 
 
@@ -164,7 +169,7 @@ public class ParserForVCG {
 
 		List<Statement> statements = null;
 		if(FirstSets.STATEMENT.contains(currentToken.getLexeme())) {
-			statSequence();
+			statements = statSequence();
 		}
 
 		expect(Kind.END); 
@@ -200,154 +205,125 @@ public class ParserForVCG {
 	 * statSequence = statement { ';' statement }
 	 * @throws ParsingException 
 	 */
-	private Result statSequence() throws ParsingException {
-		Result x = statement();
+	private List<Statement> statSequence() throws ParsingException {
+		List<Statement> statements = new ArrayList<Statement>();
+		statements.add(statement());
 		while(accept(Kind.SEMI_COL)){
 			getToken();  //eat the semicolon
-			x = statement();
+			statements.add(statement());
 		}
-
-		return x;
+		return statements;
 	}
 
 	/**
 	 * statement = assignment | funcCall | ifStatement | whileStatement | returnStatement
 	 * @throws ParsingException 
 	 */
-	private Result statement() throws ParsingException {
-		Result result = null;
+	private Statement statement() throws ParsingException {
+		Statement statement = null;
 		if(accept(Kind.LET)) {
-			result = assignment();
+			Assignment assignment = assignment();
+			statement = Statement.builder(getLineNum()).setAssignment(assignment).build();
 		}
 		else if (accept(Kind.CALL)) {
 			funcCall();
 		}
 		else if(accept(Kind.IF)) {
-			BasicBlock before = currentBB;
-			result = ifStatement();
+			IfStatement ifStatement = ifStatement();
+			statement = Statement.builder(getLineNum()).setIfStatement(ifStatement).build();
 		}
 		else if(accept(Kind.WHILE)) {
 			WhileStatement whileStatement = whileStatement();
-			//statement = Statement.builder(getLineNum()).setWhileStatement(whileStatement).build();
+			statement = Statement.builder(getLineNum()).setWhileStatement(whileStatement).build();
 		}
 		else if(accept(Kind.RETURN)) {
 			ReturnStatement returnStatement = returnStatement();
-			//statement = Statement.builder(getLineNum()).setReturnStatement(returnStatement).build();
+			statement = Statement.builder(getLineNum()).setReturnStatement(returnStatement).build();
 		}
-		else {
-			throw new ParsingException();
-		}
-		
-		return result;
+		return statement;
 	}
 
 	/**
 	 * assignment = 'let' designator '<-' expression
 	 * @throws ParsingException 
 	 */
-	private Result assignment() throws ParsingException {
+	private Assignment assignment() throws ParsingException {
 		expect(Kind.LET);
 
-		Result x = designator();
-
+		Designator designator = designator();
+		
 		expect(Kind.BECOMES);
 
-		Result y = expression();
+		Expression expression = expression();
 
-		updateSymbols(x.varValue);  //once we write we update the instruction number, update symbols before writing
-		x = emitAssignmentInstruction(x, y, currentBB);
-		return x; 
+		Assignment assignment = new Assignment(getLineNum(), designator, expression);
+		return assignment; 
 	}
 
 	/**
 	 * funcCall = 'call' ident [ '(' [expression { ',' expression } ] ')' ]
 	 * @throws ParsingException 
 	 */
-	private Result funcCall() throws ParsingException {
+	private FuncCall funcCall() throws ParsingException {
 		expect(Kind.CALL);
-
-		Result result = ident();
-	
-        InstructionBuilder iBuilder = Instruction.builder(ParserUtils.getNewInstCount());
-        iBuilder.operator(result.varValue);
+		Ident funcIdent = ident();
+		List<Expression> expressions = new ArrayList<Expression>();
+		
 		if(accept(Kind.OPN_PAREN)) {
 			getToken();  //eat the open paren
-			Result expression = expression();
+			Expression expression = expression();
+			expressions.add(expression);
 
 			while(accept(Kind.COMMA)) {
 				getToken(); //eat the comma
 				expression = expression();
+				expressions.add(expression);
 			}
-			iBuilder.op1(expression.varValue);
 			expect(Kind.CLS_PAREN);
 		}
-        currentBB.addInstruction(iBuilder.buildFunctionCall()); 
 
-		return result;
+		FuncCall funcCall = new FuncCall(getLineNum(), funcIdent, expressions);
+		return funcCall;
 	}
 
 	/**
 	 * ifStatement = 'if' relation 'then' statSequence [ 'else' statSequence ] 'fi' 
 	 * @throws ParsingException 
 	 */
-	private Result ifStatement() throws ParsingException {
-		expect(Kind.IF);
-		
-		BasicBlock before = currentBB;
-		BasicBlock condBB = createBBWithDomInfo(currentBB, true);  //create the condition Block
-		addControlFlow(before, condBB);
-		Result relation = relation();  //might have fixups
+	private IfStatement ifStatement() throws ParsingException {
+		IfStatement ifStat;
 
+		expect(Kind.IF);
+		Relation relation = relation();
 		expect(Kind.THEN);
 
-		BasicBlock ifBodyBB = createBBWithDomInfo(condBB, true);
-		addControlFlow(condBB, ifBodyBB);
+		List<Statement> ifBody = statSequence();
 
-		Result ifBody = statSequence();  //returns the first result
-
-		BasicBlock joinBlock = null; 
-		BasicBlock elseBodyBB = null;
+		List<Statement> elseBody = null;
 		if(accept(Kind.ELSE)) {
-			joinBlock = createBBWithDomInfo(condBB, false); //create join block pointer, only create if you have an else
-			addControlFlow(ifBodyBB, joinBlock);
 			getToken(); //eat the else
-			elseBodyBB = createBBWithDomInfo(condBB, true);
-			addControlFlow(condBB, elseBodyBB);
-			addControlFlow(elseBodyBB, joinBlock);
-			Result elseBody = statSequence();
+			elseBody = statSequence();
 		}
-
-		if(elseBodyBB != null) {
-			conditionalJumpForward(condBB, elseBodyBB.blockNumber.toString()); 
-			createUnconditionBranch(ifBodyBB, joinBlock.blockNumber.toString());  //jump to following block
-			currentBB = joinBlock;
-		}
-		else {
-			//dont need to branch from if body, just fall through, condition will branch here
-			conditionalJumpForward(condBB, String.valueOf(ParserUtils.blockCount + 1)); 
-		}
-
+		
 		expect(Kind.FI);
 
-		
-		return relation;
+		ifStat = new IfStatement(getLineNum(), relation, ifBody, elseBody);
+		return ifStat;
 	}
-
-
 
 	/**
 	 * whileStatement = 'while' relation 'do' statSequence 'od'
 	 * @throws ParsingException 
 	 */
 	private WhileStatement whileStatement() throws ParsingException {
-		currentBB = ParserUtils.createBBWithDomRelationship(currentBB);
 		expect(Kind.WHILE);
-		Result relation = relation();
+		Relation relation = relation();
 		expect(Kind.DO);
-	//	List<Statement> statSequence = statSequence();
+		List<Statement> statSequence = statSequence();
 		expect(Kind.OD);
 
-		return null;
+		WhileStatement whileStatement = new WhileStatement(getLineNum(), relation, statSequence);
+		return whileStatement;
 	}
 
 	/**
@@ -359,14 +335,14 @@ public class ParserForVCG {
 
 		Expression expression = null;
 		if(accept(Kind.IDENTIFIER) || accept(Kind.NUMBER)) {
-			//expression = expression();
+			expression = expression();
 		}
 		else if(accept(Kind.OPN_PAREN) || accept(Kind.FUNCTION) || accept(Kind.PROCEDURE)) { //identifier is not)
 			getToken();  //eat the paren, 'function', or 'procedure' token
-			//expression = expression();
+			expression = expression();
 		}
 
-		ReturnStatement returnStatement = new ReturnStatement(getLineNum(), null);
+		ReturnStatement returnStatement = new ReturnStatement(getLineNum(), expression);
 		return returnStatement;
 	}
 	
@@ -374,140 +350,137 @@ public class ParserForVCG {
 	 * designator = ident { '[' expression ']' }
 	 * @throws ParsingException 
 	 */
-	private Result designator() throws ParsingException {
-		Result x = ident();
+	private Designator designator() throws ParsingException {
+		Ident ident = ident();
 		List<Expression> arrayExpr = new ArrayList<Expression>();
 		while(accept(Kind.OPN_BRACK)) {
 			getToken(); //eat the open bracket
-			//arrayExpr.add(expression()); 
+			arrayExpr.add(expression()); 
 			expect(Kind.CLS_BRACK);
 		}
 
-
-		//Designator designator = new Designator(getLineNum(), ident, arrayExpr);
-		return x;
+		Designator designator = new Designator(getLineNum(), ident, arrayExpr);
+		return designator;
 	}
 
 	/**
 	 * expression = term  { ('+' | '-') term }
 	 * @throws ParsingException 
 	 */
-	private Result expression() throws ParsingException {
-		Result result1 = term();
+	private Expression expression() throws ParsingException {
+		Expression expression = null;
+		Term term1 = term();
 		if(accept(Kind.PLUS) || accept(Kind.MINUS)) {
 			do {
-				String op = currentToken.getLexeme(); 
+				Symbol op = new Symbol(currentToken.getLexeme()); 
 				getToken();  //eat the operator
 	
-				Result result2 = term();
+				Term term2 = term();
 	
-				result1 = combineArithmetic(result1, op, result2, currentBB); 
+                expression = Expression.builder(getLineNum()).setTerm1(term1).setOp(op).setTerm2(term2).build();
 			}while(accept(Kind.PLUS) || accept(Kind.MINUS)); 
 		}
-		return result1;
+		else {
+			expression = Expression.builder(getLineNum()).setTerm1(term1).build();
+		}
+		return expression;
 	}
 
 	/**
 	 * term = factor { ('*' | '/') factor }
 	 * @throws ParsingException 
 	 */
-	private Result term() throws ParsingException {
-		Result result1 = factor();
+	private Term term() throws ParsingException {
+		Factor factor1 = factor();
+		Term term = new Term(getLineNum(), factor1, null, null);
 		if(accept(Kind.TIMES) || accept(Kind.DIV)) {
 			do {
-				String op = currentToken.getLexeme(); 
-
+				Symbol op = new Symbol(currentToken.getLexeme());  //
 				getToken();  //eat the times or div;
 	
-				Result result2 = factor();
-
-				result1 = combineArithmetic(result1, op, result2, currentBB);
+				Factor factor2 = factor();
+				term = new Term(getLineNum(), term.getFactor1(), op, factor2);
 				
 			}while(accept(Kind.TIMES) || accept(Kind.DIV));
 		}
-		return result1;
+		return term;
 	}
 
 	/**
 	 * relation = expression relOp expression
 	 * @throws ParsingException 
 	 */
-	private Result relation() throws ParsingException {
-		Result leftExpr = expression();
+	private Relation relation() throws ParsingException {
+		Expression leftExpr = expression();
 
-		String op = currentToken.getLexeme();
-		getToken();
-		Result rightExpr = expression();
-		
-		Result x = combineRelation(leftExpr, op, rightExpr, currentBB);
-		
-		return x;
+		Symbol relOp = new Symbol(currentToken.getLexeme());
+
+		getToken();//TODO:  do relational comparison here??
+
+		Expression rightExpr = expression();
+
+		Relation relation = new Relation(getLineNum(), relOp, leftExpr, rightExpr);
+
+		return relation;
 	}
 
 	/**
 	 * factor = designator | number | '(' expression ')' | funcCall
 	 * @throws ParsingException 
 	 */
-	private Result factor() throws ParsingException {
-
-		Result x = new Result();
+	private Factor factor() throws ParsingException {
+		Factor factor; 
 
 		if(accept(Kind.IDENTIFIER)) {
-			x = designator();
-			x.varValue = ParserUtils.getSymbolFromTable(x.varValue);
+			Designator designator = designator();
+			factor = Factor.builder(getLineNum()).setDesignator(designator).build();
 		}
 		else if(accept(Kind.NUMBER)) {
-			x = number();
+			Number number = number();
+			factor = Factor.builder(getLineNum()).setNumber(number).build();
 		}
+		else if(accept(Kind.OPN_PAREN)) {
+			Expression expression = expression();
 
-//		else if(accept(Kind.OPN_PAREN)) {
-//			Expression expression = expression();
-//
-//			if(expression.isNumber()) {
-//				Number number = new Number(getLineNum(), expression.getNumberValue());
-//				factor = Factor.builder(getLineNum()).setNumber(number).build();
-//			}
-//			else {
-//				factor = Factor.builder(getLineNum()).setExpression(expression).build();
-//			}
-//		}
-//		else if(accept(Kind.CALL)) {
-//			FuncCall funcCall = funcCall();
-//			factor = Factor.builder(getLineNum()).setFuncCall(funcCall).build();
-//        }
+			if(expression.isNumber()) {
+				Number number = new Number(getLineNum(), expression.getNumberValue());
+				factor = Factor.builder(getLineNum()).setNumber(number).build();
+			}
+			else {
+				factor = Factor.builder(getLineNum()).setExpression(expression).build();
+			}
+		}
+		else if(accept(Kind.CALL)) {
+			FuncCall funcCall = funcCall();
+			factor = Factor.builder(getLineNum()).setFuncCall(funcCall).build();
+        }
 		else {
 			throw new ParsingException();
 		} 
 		
-		return x;
+		return factor;
 	}
 
 	/**
 	 * ident = letter { letter | digit }
 	 */
-	private Result ident() {
+	private Ident ident() {
 		System.out.println("Identifier found: " + currentToken.getLexeme());
-		Result x = new Result();
-		x.type = ResultEnum.VARIABLE;
-		x.varValue = currentToken.getLexeme();
+		Symbol symbol = new Symbol(currentToken.getLexeme());
+		Ident ident = new Ident(getLineNum(), symbol);
 		getToken();
-		return x;
+		return ident;
 	}
 
 	/**
 	 * number = digit {digit}
 	 */
-	private Result number() {
+	private Number number() {
 		System.out.println("Number found: " + currentToken.getLexeme());
-
-		Result x = new Result();
-		x.type = ResultEnum.CONSTANT;
-		x.constValue = Integer.valueOf(currentToken.getLexeme());
-
-		getToken(); //eat the number
-		return x;
+		Number number = new Number(getLineNum(), Integer.valueOf(currentToken.getLexeme()));
+		getToken();
+		return number;
 	}
-
 
 	/**
 	 * Determines if the current token matches the expected token.
@@ -538,25 +511,11 @@ public class ParserForVCG {
 		currentToken = scanner.nextToken();
 	}
 
+	public Computation getComputationNode() {
+		return computationNode;
+	} 
+
 	public int getLineNum() {
 		return scanner.lineNum;
-	}
-
-	private BasicBlock createBBWithDomInfo(BasicBlock dominator, boolean setToCurrent){
-		BasicBlock bb = new BasicBlock();
-		addDomInfo(dominator, bb);
-		if(setToCurrent){
-			currentBB = bb;
-		}
-		return bb; 
-	}
-
-	public void addControlFlow(BasicBlock from, BasicBlock to){
-		from.addControlFlow(to);
-	}
-
-	public void addDomInfo(BasicBlock dominator, BasicBlock dominatee){
-		dominator.addDominatee(dominatee);
-		dominatee.addDominator(dominator);
 	}
 }
